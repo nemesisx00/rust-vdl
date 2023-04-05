@@ -6,13 +6,23 @@ use crate::download::VideoDownloader;
 
 pub fn App(cx: Scope) -> Element
 {
+	return cx.render(rsx!
+	{
+		h1 { "DESKTOP" }
+		button
+		{
+			onclick: |_| async move {
+				doListFormats();
+			},
+			"List Formats"
+		}
+	});
+}
+
+fn doListFormats()
+{
 	let mut vdl = VideoDownloader::new("yt-dlp", "V:/Downloads/ytdl");
 	let video = "https://youtu.be/n3onSHukoIU";
 	vdl.listFormats(video);
 	//vdl.download(video);
-	
-	return cx.render(rsx!
-	{
-		h1 { "DESKTOP" }
-	});
 }
