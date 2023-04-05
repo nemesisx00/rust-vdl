@@ -1,13 +1,15 @@
 #![allow(non_snake_case, non_upper_case_globals)]
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
-#[derive(Clone, Default)]
-pub struct TemplateBuilder
+use crate::constants::DefaultOutputTemplate;
+
+#[derive(Clone)]
+pub struct OutputTemplateBuilder
 {
 	template: String,
 }
 
-impl TemplateBuilder
+impl OutputTemplateBuilder
 {
 	pub fn new(template: String) -> Self
 	{
@@ -27,7 +29,7 @@ impl TemplateBuilder
 		return self.template.clone();
 	}
 	
-	pub fn push(&mut self, variable: TemplateVariable, join: Option<String>)
+	pub fn push(&mut self, variable: OutputTemplateVariable, join: Option<String>)
 	{
 		let s = self.formatVariable(variable);
 		if let Some(j) = join
@@ -42,109 +44,120 @@ impl TemplateBuilder
 		self.template = template.to_owned();
 	}
 	
-	fn formatVariable(&self, variable: TemplateVariable) -> String
+	fn formatVariable(&self, variable: OutputTemplateVariable) -> String
 	{
 		let s = self.getVariableString(variable);
 		return match variable
 		{
-			TemplateVariable::IsLive
-			| TemplateVariable::WasLive
+			OutputTemplateVariable::IsLive
+			| OutputTemplateVariable::WasLive
 				=> format!("%({})b", s),
 			
-			TemplateVariable::Timestamp
-			| TemplateVariable::ReleaseTimestamp
-			| TemplateVariable::ModifiedTimestamp
-			| TemplateVariable::ChannelFollowerCount
-			| TemplateVariable::Duration
-			| TemplateVariable::ViewCount
-			| TemplateVariable::ConcurrentViewCount
-			| TemplateVariable::LikeCount
-			| TemplateVariable::DislikeCount
-			| TemplateVariable::RepostCount
-			| TemplateVariable::AverageRating
-			| TemplateVariable::CommentCount
-			| TemplateVariable::AgeLimit
-			| TemplateVariable::StartTime
-			| TemplateVariable::EndTime
-			| TemplateVariable::Epoch
-			| TemplateVariable::Autonumber
-			| TemplateVariable::VideoAutonumber
-			| TemplateVariable::NEntries
-			| TemplateVariable::PlaylistCount
-			| TemplateVariable::PlaylistIndex
-			| TemplateVariable::PlaylistAutonumber
+			OutputTemplateVariable::Timestamp
+			| OutputTemplateVariable::ReleaseTimestamp
+			| OutputTemplateVariable::ModifiedTimestamp
+			| OutputTemplateVariable::ChannelFollowerCount
+			| OutputTemplateVariable::Duration
+			| OutputTemplateVariable::ViewCount
+			| OutputTemplateVariable::ConcurrentViewCount
+			| OutputTemplateVariable::LikeCount
+			| OutputTemplateVariable::DislikeCount
+			| OutputTemplateVariable::RepostCount
+			| OutputTemplateVariable::AverageRating
+			| OutputTemplateVariable::CommentCount
+			| OutputTemplateVariable::AgeLimit
+			| OutputTemplateVariable::StartTime
+			| OutputTemplateVariable::EndTime
+			| OutputTemplateVariable::Epoch
+			| OutputTemplateVariable::Autonumber
+			| OutputTemplateVariable::VideoAutonumber
+			| OutputTemplateVariable::NEntries
+			| OutputTemplateVariable::PlaylistCount
+			| OutputTemplateVariable::PlaylistIndex
+			| OutputTemplateVariable::PlaylistAutonumber
 				=> format!("%({})n", s),
 			
 			_ => format!("%({})s", s),
 		};
 	}
 	
-	fn getVariableString(&self, variable: TemplateVariable) -> String
+	fn getVariableString(&self, variable: OutputTemplateVariable) -> String
 	{
 		return match variable
 		{
-			TemplateVariable::Identifier					=> "id".to_string(),
-			TemplateVariable::Title							=> "title".to_string(),
-			TemplateVariable::FullTitle						=> "fulltitle".to_string(),
-			TemplateVariable::Extension						=> "ext".to_string(),
-			TemplateVariable::AlternateTitle				=> "alt_title".to_string(),
-			TemplateVariable::Description					=> "description".to_string(),
-			TemplateVariable::DisplayIdentifier				=> "display_id".to_string(),
-			TemplateVariable::Uploader						=> "uploader".to_string(),
-			TemplateVariable::License						=> "license".to_string(),
-			TemplateVariable::Creator						=> "creator".to_string(),
-			TemplateVariable::Timestamp						=> "timestamp".to_string(),
-			TemplateVariable::UploadDate					=> "upload_date".to_string(),
-			TemplateVariable::ReleaseTimestamp				=> "release_timestamp".to_string(),
-			TemplateVariable::ReleaseDate					=> "release_date".to_string(),
-			TemplateVariable::ModifiedTimestamp				=> "modified_timestamp".to_string(),
-			TemplateVariable::ModifiedDate					=> "modified_date".to_string(),
-			TemplateVariable::UploaderIdentifier			=> "uploader_id".to_string(),
-			TemplateVariable::Channel						=> "channel".to_string(),
-			TemplateVariable::ChannelIdentifier				=> "channel_id".to_string(),
-			TemplateVariable::ChannelFollowerCount			=> "channel_follower_count".to_string(),
-			TemplateVariable::Location						=> "location".to_string(),
-			TemplateVariable::Duration						=> "duration".to_string(),
-			TemplateVariable::DurationString				=> "duration_string".to_string(),
-			TemplateVariable::ViewCount						=> "view_count".to_string(),
-			TemplateVariable::ConcurrentViewCount			=> "concurrent_view_count".to_string(),
-			TemplateVariable::LikeCount						=> "like_count".to_string(),
-			TemplateVariable::DislikeCount					=> "dislike_count".to_string(),
-			TemplateVariable::RepostCount					=> "repost_count".to_string(),
-			TemplateVariable::AverageRating					=> "average_rating".to_string(),
-			TemplateVariable::CommentCount					=> "comment_count".to_string(),
-			TemplateVariable::AgeLimit						=> "age_limit".to_string(),
-			TemplateVariable::LiveStatus					=> "live_status".to_string(),
-			TemplateVariable::IsLive						=> "is_live".to_string(),
-			TemplateVariable::WasLive						=> "was_live".to_string(),
-			TemplateVariable::PlayableInEmbed				=> "playable_in_embed".to_string(),
-			TemplateVariable::Availability					=> "availability".to_string(),
-			TemplateVariable::StartTime						=> "start_time".to_string(),
-			TemplateVariable::EndTime						=> "end_time".to_string(),
-			TemplateVariable::Extractor						=> "extractor".to_string(),
-			TemplateVariable::ExtractorKey					=> "extractor_key".to_string(),
-			TemplateVariable::Epoch							=> "epoch".to_string(),
-			TemplateVariable::Autonumber					=> "autonumber".to_string(),
-			TemplateVariable::VideoAutonumber				=> "video_autonumber".to_string(),
-			TemplateVariable::NEntries						=> "n_entries".to_string(),
-			TemplateVariable::PlaylistIdentifier			=> "playlist_id".to_string(),
-			TemplateVariable::PlaylistTitle					=> "playlist_title".to_string(),
-			TemplateVariable::Playlist						=> "playlist".to_string(),
-			TemplateVariable::PlaylistCount					=> "playlist_count".to_string(),
-			TemplateVariable::PlaylistIndex					=> "playlist_index".to_string(),
-			TemplateVariable::PlaylistAutonumber			=> "playlist_autonumber".to_string(),
-			TemplateVariable::PlaylistUploader				=> "playlist_uploader".to_string(),
-			TemplateVariable::PlaylistUploaderIdentifier	=> "playlist_uploader_id".to_string(),
-			TemplateVariable::WebpageUrl					=> "webpage_url".to_string(),
-			TemplateVariable::WebpageUrlBasename			=> "webpage_url_basename".to_string(),
-			TemplateVariable::WebpageUrlDomain				=> "webpage_url_domain".to_string(),
-			TemplateVariable::OriginalUrl					=> "original_url".to_string(),
+			OutputTemplateVariable::Identifier					=> "id".to_string(),
+			OutputTemplateVariable::Title						=> "title".to_string(),
+			OutputTemplateVariable::FullTitle					=> "fulltitle".to_string(),
+			OutputTemplateVariable::Extension					=> "ext".to_string(),
+			OutputTemplateVariable::AlternateTitle				=> "alt_title".to_string(),
+			OutputTemplateVariable::Description					=> "description".to_string(),
+			OutputTemplateVariable::DisplayIdentifier			=> "display_id".to_string(),
+			OutputTemplateVariable::Uploader					=> "uploader".to_string(),
+			OutputTemplateVariable::License						=> "license".to_string(),
+			OutputTemplateVariable::Creator						=> "creator".to_string(),
+			OutputTemplateVariable::Timestamp					=> "timestamp".to_string(),
+			OutputTemplateVariable::UploadDate					=> "upload_date".to_string(),
+			OutputTemplateVariable::ReleaseTimestamp			=> "release_timestamp".to_string(),
+			OutputTemplateVariable::ReleaseDate					=> "release_date".to_string(),
+			OutputTemplateVariable::ModifiedTimestamp			=> "modified_timestamp".to_string(),
+			OutputTemplateVariable::ModifiedDate				=> "modified_date".to_string(),
+			OutputTemplateVariable::UploaderIdentifier			=> "uploader_id".to_string(),
+			OutputTemplateVariable::Channel						=> "channel".to_string(),
+			OutputTemplateVariable::ChannelIdentifier			=> "channel_id".to_string(),
+			OutputTemplateVariable::ChannelFollowerCount		=> "channel_follower_count".to_string(),
+			OutputTemplateVariable::Location					=> "location".to_string(),
+			OutputTemplateVariable::Duration					=> "duration".to_string(),
+			OutputTemplateVariable::DurationString				=> "duration_string".to_string(),
+			OutputTemplateVariable::ViewCount					=> "view_count".to_string(),
+			OutputTemplateVariable::ConcurrentViewCount			=> "concurrent_view_count".to_string(),
+			OutputTemplateVariable::LikeCount					=> "like_count".to_string(),
+			OutputTemplateVariable::DislikeCount				=> "dislike_count".to_string(),
+			OutputTemplateVariable::RepostCount					=> "repost_count".to_string(),
+			OutputTemplateVariable::AverageRating				=> "average_rating".to_string(),
+			OutputTemplateVariable::CommentCount				=> "comment_count".to_string(),
+			OutputTemplateVariable::AgeLimit					=> "age_limit".to_string(),
+			OutputTemplateVariable::LiveStatus					=> "live_status".to_string(),
+			OutputTemplateVariable::IsLive						=> "is_live".to_string(),
+			OutputTemplateVariable::WasLive						=> "was_live".to_string(),
+			OutputTemplateVariable::PlayableInEmbed				=> "playable_in_embed".to_string(),
+			OutputTemplateVariable::Availability				=> "availability".to_string(),
+			OutputTemplateVariable::StartTime					=> "start_time".to_string(),
+			OutputTemplateVariable::EndTime						=> "end_time".to_string(),
+			OutputTemplateVariable::Extractor					=> "extractor".to_string(),
+			OutputTemplateVariable::ExtractorKey				=> "extractor_key".to_string(),
+			OutputTemplateVariable::Epoch						=> "epoch".to_string(),
+			OutputTemplateVariable::Autonumber					=> "autonumber".to_string(),
+			OutputTemplateVariable::VideoAutonumber				=> "video_autonumber".to_string(),
+			OutputTemplateVariable::NEntries					=> "n_entries".to_string(),
+			OutputTemplateVariable::PlaylistIdentifier			=> "playlist_id".to_string(),
+			OutputTemplateVariable::PlaylistTitle				=> "playlist_title".to_string(),
+			OutputTemplateVariable::Playlist					=> "playlist".to_string(),
+			OutputTemplateVariable::PlaylistCount				=> "playlist_count".to_string(),
+			OutputTemplateVariable::PlaylistIndex				=> "playlist_index".to_string(),
+			OutputTemplateVariable::PlaylistAutonumber			=> "playlist_autonumber".to_string(),
+			OutputTemplateVariable::PlaylistUploader			=> "playlist_uploader".to_string(),
+			OutputTemplateVariable::PlaylistUploaderIdentifier	=> "playlist_uploader_id".to_string(),
+			OutputTemplateVariable::WebpageUrl					=> "webpage_url".to_string(),
+			OutputTemplateVariable::WebpageUrlBasename			=> "webpage_url_basename".to_string(),
+			OutputTemplateVariable::WebpageUrlDomain			=> "webpage_url_domain".to_string(),
+			OutputTemplateVariable::OriginalUrl					=> "original_url".to_string(),
+		};
+	}
+}
+
+impl Default for OutputTemplateBuilder
+{
+	fn default() -> Self
+	{
+		return Self
+		{
+			template: DefaultOutputTemplate.into(),
 		};
 	}
 }
 
 #[derive(Clone, Copy)]
-pub enum TemplateVariable
+pub enum OutputTemplateVariable
 {
 	Identifier,
 	Title,

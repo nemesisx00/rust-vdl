@@ -4,35 +4,39 @@
 use std::collections::BTreeMap;
 use std::process::{Child, Command, ChildStdout, Stdio};
 use std::io::{self, BufRead, BufReader};
-use crate::download::template::TemplateBuilder;
-
-const DefaultFormatTemplate: &'static str = "res:480,vcodec:av1,acodec:opus";
-const DefaultOutputTemplate: &'static str = "%(release_timestamp)s-%(title)s.%(ext)s";
+use crate::{
+	constants::{DefaultBinary, DefaultFormatTemplate, DefaultOutputDirectory},
+	download::template::OutputTemplateBuilder,
+};
 
 pub struct VideoDownloader
 {
 	binary: String,
 	outputDirectory: String,
-	outputTemplate: TemplateBuilder,
+	outputTemplate: OutputTemplateBuilder,
 	processes: BTreeMap<String, Child>,
 }
 
 impl VideoDownloader
 {
-	pub fn new(binary: &'static str, outDir: &'static str) -> Self
+	pub fn new(binary: &str, outDir: &str) -> Self
 	{
 		return Self
 		{
 			binary: binary.into(),
 			outputDirectory: outDir.into(),
-			outputTemplate: TemplateBuilder::new(DefaultOutputTemplate.to_owned()),
-			processes: BTreeMap::<String, Child>::new(),
+			..Default::default()
 		};
 	}
 	
-	pub fn setBinary(&mut self, binary: &'static str)
+	pub fn setBinary(&mut self, binary: &str)
 	{
 		self.binary = binary.into();
+	}
+	
+	pub fn setOutputDirectory(&mut self, outDir: &str)
+	{
+		self.outputDirectory = outDir.into();
 	}
 	
 	pub fn cancel(&mut self, video: &str)
@@ -93,4 +97,18 @@ impl VideoDownloader
 			}
 		}
 	}
+}
+
+impl Default for VideoDownloader
+{
+    fn default() -> Self
+	{
+		return Self
+		{
+			binary: DefaultBinary.into(),
+			outputDirectory: DefaultOutputDirectory.into(),
+			outputTemplate: Default::default(),
+			processes: Default::default(),
+		};
+    }
 }

@@ -4,5 +4,5 @@
 mod template;
 mod video;
 
-pub use template::{TemplateBuilder, TemplateVariable};
+pub use template::{OutputTemplateBuilder, OutputTemplateVariable};
 pub use video::VideoDownloader;
