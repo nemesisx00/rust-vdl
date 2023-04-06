@@ -10,7 +10,7 @@ use crate::{
 #[inline_props]
 fn SimpleInput<'a>(cx: Scope,
 	label: String, name: String, value: String,
-	onValueChanged: EventHandler<'a, FormEvent>
+	onInput: EventHandler<'a, FormEvent>
 ) -> Element<'a>
 {
 	return cx.render(rsx!
@@ -19,7 +19,7 @@ fn SimpleInput<'a>(cx: Scope,
 		{
 			class: "row",
 			label { r#for: "{name}", "{label}:" }
-			input { r#type: "text", name: "{name}", value: "{value}", oninput: move |evt| onValueChanged.call(evt) }
+			input { r#type: "text", name: "{name}", value: "{value}", oninput: move |evt| onInput.call(evt) }
 		}
 	});
 }
@@ -32,9 +32,10 @@ pub fn App(cx: Scope) -> Element
 	let formatTemplate = use_state(cx, || DefaultFormatTemplate.to_string());
 	let videoUrl = use_state(cx, || String::default());
 	
-	let mut vdl1 = VideoDownloader::new(binary.get().into(), outputDir.get().into());
-	let mut vdl2 = VideoDownloader::new(binary.get().into(), outputDir.get().into());
-	vdl2.outputTemplate.set(outputTemplate.get().into());
+	let mut vdl1 = VideoDownloader::new(binary.to_string(), outputDir.to_string());
+	vdl1.outputTemplate.set(outputTemplate.to_string());
+	vdl1.formatTemplate = formatTemplate.to_string();
+	let vdl2 = vdl1.clone();
 	
 	return cx.render(rsx!
 	{
@@ -42,21 +43,37 @@ pub fn App(cx: Scope) -> Element
 		{
 			class: "form",
 			
-			SimpleInput { label: "Binary".into(), name: "binary".into(), value: binary.get().into(), onValueChanged: move |evt: FormEvent| binary.set(evt.value.to_owned()) }
-			SimpleInput { label: "Output".into(), name: "output".into(), value: outputDir.get().into(), onValueChanged: move |evt: FormEvent| outputDir.set(evt.value.to_owned()) }
-			SimpleInput { label: "Output Template".into(), name: "otemplate".into(), value: outputTemplate.get().into(), onValueChanged: move |evt: FormEvent| outputTemplate.set(evt.value.to_owned()) }
-			SimpleInput { label: "Format Template".into(), name: "ftemplate".into(), value: formatTemplate.get().into(), onValueChanged: move |evt: FormEvent| formatTemplate.set(evt.value.to_owned()) }
-			SimpleInput { label: "Video".into(), name: "video".into(), value: videoUrl.get().into(), onValueChanged: move |evt: FormEvent| videoUrl.set(evt.value.to_owned()) }
+			SimpleInput { label: "Binary".into(), name: "binary".into(), value: binary.to_string(), onInput: move |evt: FormEvent| binary.set(evt.value.to_owned()) }
+			SimpleInput { label: "Output".into(), name: "output".into(), value: outputDir.to_string(), onInput: move |evt: FormEvent| outputDir.set(evt.value.to_owned()) }
+			SimpleInput { label: "Output Template".into(), name: "otemplate".into(), value: outputTemplate.to_string(), onInput: move |evt: FormEvent| outputTemplate.set(evt.value.to_owned()) }
+			SimpleInput { label: "Format Template".into(), name: "ftemplate".into(), value: formatTemplate.to_string(), onInput: move |evt: FormEvent| formatTemplate.set(evt.value.to_owned()) }
+			SimpleInput { label: "Video".into(), name: "video".into(), value: videoUrl.to_string(), onInput: move |evt: FormEvent| videoUrl.set(evt.value.to_owned()) }
 			
 			button
 			{
-				onclick: move |_| vdl1.listFormats(videoUrl.get().into()),
+				onclick: move |_| {
+					let url = videoUrl.to_string();
+					let mut vdl = vdl1.clone();
+					cx.spawn(async {
+						let _ = tokio::task::spawn(async move {
+							vdl.listFormats(url.to_string());
+						}).await;
+					})
+				},
 				"List Formats"
 			}
 			
 			button
 			{
-				onclick: move |_| vdl2.download(videoUrl.get().into()),
+				onclick: move |_| {
+					let url = videoUrl.to_string();
+					let mut vdl = vdl2.clone();
+					cx.spawn(async {
+						let _ = tokio::task::spawn(async move {
+							vdl.download(url.to_string());
+						}).await;
+					})
+				},
 				"Download"
 			}
 		}

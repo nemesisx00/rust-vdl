@@ -1,7 +1,6 @@
 #![allow(non_snake_case, non_upper_case_globals)]
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
-use std::collections::BTreeMap;
 use std::process::{Child, Command, ChildStdout, Stdio};
 use std::io::{self, BufRead, BufReader};
 use crate::{
@@ -9,6 +8,7 @@ use crate::{
 	download::template::OutputTemplateBuilder,
 };
 
+#[derive(Clone)]
 pub struct VideoDownloader
 {
 	pub formatTemplate: String,
@@ -16,7 +16,6 @@ pub struct VideoDownloader
 	
 	binary: String,
 	outputDirectory: String,
-	processes: BTreeMap<String, Child>,
 }
 
 impl VideoDownloader
@@ -39,14 +38,6 @@ impl VideoDownloader
 	pub fn setOutputDirectory(&mut self, outDir: String)
 	{
 		self.outputDirectory = outDir.into();
-	}
-	
-	pub fn cancel(&mut self, video: String)
-	{
-		if let Some(_pair) = self.processes.get(&video)
-		{
-			//Fuck that process up
-		}
 	}
 	
 	pub fn download(&mut self, video: String)
@@ -112,7 +103,6 @@ impl Default for VideoDownloader
 			
 			binary: DefaultBinary.into(),
 			outputDirectory: DefaultOutputDirectory.into(),
-			processes: Default::default(),
 		};
     }
 }
