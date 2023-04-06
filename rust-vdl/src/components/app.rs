@@ -38,7 +38,7 @@ pub fn App(cx: Scope) -> Element
 					let fTemplate = formatTemplate.to_string();
 					
 					cx.spawn(async {
-						let _ = tokio::task::spawn(async move {
+						let _ = tokio::task::spawn(async {
 							let vdl = generateDownloader(bin, dir, oTemplate, fTemplate);
 							vdl.listFormats(url.into());
 						}).await;
@@ -58,7 +58,7 @@ pub fn App(cx: Scope) -> Element
 					let fTemplate = formatTemplate.to_string();
 					
 					cx.spawn(async {
-						let _ = tokio::task::spawn(async move {
+						let _ = tokio::task::spawn(async {
 							let vdl = generateDownloader(bin, dir, oTemplate, fTemplate);
 							vdl.download(url.into());
 						}).await;
