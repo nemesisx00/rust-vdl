@@ -1,7 +1,7 @@
 #![allow(non_snake_case, non_upper_case_globals)]
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
-use std::process::{Child, Command, ChildStdout, Stdio};
+use std::process::{Child, Command, ChildStderr, ChildStdout, Stdio};
 use std::io::{self, BufRead, BufReader};
 use crate::{
 	constants::{DefaultBinary, DefaultFormatTemplate, DefaultOutputDirectory},
@@ -52,7 +52,7 @@ impl VideoDownloader
 		
 		match proc
 		{
-			Ok(mut child) => self.writeOutput(child.stdout.take().unwrap()),
+			Ok(mut child) => self.writeOutput(child.stdout.take(), child.stderr.take()),
 			Err(e) => println!("Error downloading video: {} -> {}", video, e)
 		};
 	}
@@ -64,7 +64,7 @@ impl VideoDownloader
 		
 		match proc
 		{
-			Ok(mut child) => self.writeOutput(child.stdout.take().unwrap()),
+			Ok(mut child) => self.writeOutput(child.stdout.take(), child.stderr.take()),
 			Err(e) => println!("Error getting list of available formats for video: {} -> {}", video, e)
 		};
 	}
@@ -78,16 +78,38 @@ impl VideoDownloader
 			.spawn();
 	}
 	
-	fn writeOutput(&self, stdout: ChildStdout)
+	fn writeOutput(&self, stdout: Option<ChildStdout>, stderr: Option<ChildStderr>)
 	{
-		let lines = BufReader::new(stdout).lines();
-		for line in lines
+		match stdout
 		{
-			match line
-			{
-				Ok(s) =>  println!("{}", s),
-				Err(e) => println!("{:?}", e),
-			}
+			Some(so) => {
+				let lines = BufReader::new(so).lines();
+				for line in lines
+				{
+					match line
+					{
+						Ok(s) =>  println!("{}", s),
+						Err(e) => println!("{}", e),
+					}
+				}
+			},
+			None => println!("No ChildStdout"),
+		};
+		
+		match stderr
+		{
+			Some(se) => {
+				let lines = BufReader::new(se).lines();
+				for line in lines
+				{
+					match line
+					{
+						Ok(s) =>  println!("{}", s),
+						Err(e) => println!("{}", e),
+					}
+				}
+			},
+			None => println!("No ChildStderr"),
 		}
 	}
 }
