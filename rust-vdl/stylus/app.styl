@@ -13,3 +13,43 @@ h1,h2,h3,h4,h5,h6
 	margin 0
 	text-align center
 
+button
+	background-color backgroundLight
+	border-color backgroundDark
+	border-radius 10px
+	color white
+	cursor pointer
+	font-size 1.4em
+	font-weight bold
+
+input
+	background-color backgroundLight
+	border 0 none
+	border-radius 5px
+	color offWhite
+	padding 5px
+
+#main
+
+	& .app
+		flex(column)
+		width 90%
+		margin 0 auto
+		padding-top 15px
+		
+		& .row
+			flex(row)
+			margin 5px 0
+			
+			& *
+				margin-right 10px
+				
+				&:last-child
+					margin-right 0
+			
+			& button
+				flex-grow 1
+				height 40px
+			
+			& input
+				flex-grow 1

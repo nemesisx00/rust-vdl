@@ -18,9 +18,11 @@ pub fn App(cx: Scope) -> Element
 	
 	return cx.render(rsx!
 	{
+		link { href: "/static/app.css", rel: "stylesheet", }
+		
 		div
 		{
-			class: "form",
+			class: "app",
 			
 			SimpleInput { label: "Binary".into(), name: "binary".into(), value: binary.to_string(), onInput: move |evt: FormEvent| binary.set(evt.value.to_owned()) }
 			SimpleInput { label: "Output".into(), name: "output".into(), value: outputDir.to_string(), onInput: move |evt: FormEvent| outputDir.set(evt.value.to_owned()) }
@@ -28,44 +30,49 @@ pub fn App(cx: Scope) -> Element
 			SimpleInput { label: "Format Template".into(), name: "ftemplate".into(), value: formatTemplate.to_string(), onInput: move |evt: FormEvent| formatTemplate.set(evt.value.to_owned()) }
 			SimpleInput { label: "Video".into(), name: "video".into(), value: videoUrl.to_string(), onInput: move |evt: FormEvent| videoUrl.set(evt.value.to_owned()) }
 			
-			button
+			div
 			{
-				onclick: move |_| {
-					let url = videoUrl.to_string();
-					let bin = binary.to_string();
-					let dir = outputDir.to_string();
-					let oTemplate = outputTemplate.to_string();
-					let fTemplate = formatTemplate.to_string();
-					
-					cx.spawn(async {
-						let _ = tokio::task::spawn(async {
-							let vdl = generateDownloader(bin, dir, oTemplate, fTemplate);
-							vdl.listFormats(url.into());
-						}).await;
-					})
-				},
+				class: "row",
 				
-				"List Formats"
-			}
-			
-			button
-			{
-				onclick: move |_| {
-					let url = videoUrl.to_string();
-					let bin = binary.to_string();
-					let dir = outputDir.to_string();
-					let oTemplate = outputTemplate.to_string();
-					let fTemplate = formatTemplate.to_string();
+				button
+				{
+					onclick: move |_| {
+						let url = videoUrl.to_string();
+						let bin = binary.to_string();
+						let dir = outputDir.to_string();
+						let oTemplate = outputTemplate.to_string();
+						let fTemplate = formatTemplate.to_string();
+						
+						cx.spawn(async {
+							let _ = tokio::task::spawn(async {
+								let vdl = generateDownloader(bin, dir, oTemplate, fTemplate);
+								vdl.listFormats(url);
+							}).await;
+						})
+					},
 					
-					cx.spawn(async {
-						let _ = tokio::task::spawn(async {
-							let vdl = generateDownloader(bin, dir, oTemplate, fTemplate);
-							vdl.download(url.into());
-						}).await;
-					})
-				},
+					"List Formats"
+				}
 				
-				"Download"
+				button
+				{
+					onclick: move |_| {
+						let url = videoUrl.to_string();
+						let bin = binary.to_string();
+						let dir = outputDir.to_string();
+						let oTemplate = outputTemplate.to_string();
+						let fTemplate = formatTemplate.to_string();
+						
+						cx.spawn(async {
+							let _ = tokio::task::spawn(async {
+								let vdl = generateDownloader(bin, dir, oTemplate, fTemplate);
+								vdl.download(url);
+							}).await;
+						})
+					},
+					
+					"Download"
+				}
 			}
 		}
 	});
