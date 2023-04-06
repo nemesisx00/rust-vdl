@@ -56,7 +56,7 @@ pub fn App(cx: Scope) -> Element
 					let mut vdl = vdl1.clone();
 					cx.spawn(async {
 						let _ = tokio::task::spawn(async move {
-							vdl.listFormats(url.to_string());
+							vdl.listFormats(url.into());
 						}).await;
 					})
 				},
@@ -70,7 +70,7 @@ pub fn App(cx: Scope) -> Element
 					let mut vdl = vdl2.clone();
 					cx.spawn(async {
 						let _ = tokio::task::spawn(async move {
-							vdl.download(url.to_string());
+							vdl.download(url.into());
 						}).await;
 					})
 				},
