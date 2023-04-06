@@ -4,7 +4,7 @@
 use std::process::{Child, Command, ChildStderr, ChildStdout, Stdio};
 use std::io::{self, BufRead, BufReader};
 use crate::{
-	constants::{DefaultBinary, DefaultFormatTemplate, DefaultOutputDirectory},
+	constants::{DefaultBinary, DefaultFormatTemplate, DefaultFormatSearch, DefaultOutputDirectory},
 	download::template::OutputTemplateBuilder,
 };
 
@@ -12,6 +12,7 @@ use crate::{
 pub struct VideoDownloader
 {
 	pub formatTemplate: String,
+	pub formatSearch: String,
 	pub outputTemplate: OutputTemplateBuilder,
 	
 	binary: String,
@@ -44,7 +45,7 @@ impl VideoDownloader
 	{
 		let proc = self.spawnCommand(vec![
 			"-S", self.formatTemplate.as_str(),
-			"-f", "bv*+ba",
+			"-f", self.formatSearch.as_str(),
 			"-P", self.outputDirectory.as_str(),
 			"-o", self.outputTemplate.get().as_str(),
 			video.as_str(),
@@ -120,6 +121,7 @@ impl Default for VideoDownloader
 		return Self
 		{
 			formatTemplate: DefaultFormatTemplate.into(),
+			formatSearch: DefaultFormatSearch.into(),
 			outputTemplate: Default::default(),
 			
 			binary: DefaultBinary.into(),
