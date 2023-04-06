@@ -2,5 +2,6 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
 mod app;
+mod input;
 
 pub use app::App;

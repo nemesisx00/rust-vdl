@@ -3,26 +3,10 @@
 
 use dioxus::prelude::*;
 use crate::{
+	components::input::SimpleInput,
 	constants::{DefaultBinary, DefaultFormatTemplate, DefaultOutputDirectory, DefaultOutputTemplate},
-	download::VideoDownloader
+	download::VideoDownloader,
 };
-
-#[inline_props]
-fn SimpleInput<'a>(cx: Scope,
-	label: String, name: String, value: String,
-	onInput: EventHandler<'a, FormEvent>
-) -> Element<'a>
-{
-	return cx.render(rsx!
-	{
-		div
-		{
-			class: "row",
-			label { r#for: "{name}", "{label}:" }
-			input { r#type: "text", name: "{name}", value: "{value}", oninput: move |evt| onInput.call(evt) }
-		}
-	});
-}
 
 pub fn App(cx: Scope) -> Element
 {
@@ -31,11 +15,6 @@ pub fn App(cx: Scope) -> Element
 	let outputTemplate = use_state(cx, || DefaultOutputTemplate.to_string());
 	let formatTemplate = use_state(cx, || DefaultFormatTemplate.to_string());
 	let videoUrl = use_state(cx, || String::default());
-	
-	let mut vdl1 = VideoDownloader::new(binary.to_string(), outputDir.to_string());
-	vdl1.outputTemplate.set(outputTemplate.to_string());
-	vdl1.formatTemplate = formatTemplate.to_string();
-	let vdl2 = vdl1.clone();
 	
 	return cx.render(rsx!
 	{
@@ -53,13 +32,19 @@ pub fn App(cx: Scope) -> Element
 			{
 				onclick: move |_| {
 					let url = videoUrl.to_string();
-					let mut vdl = vdl1.clone();
+					let bin = binary.to_string();
+					let dir = outputDir.to_string();
+					let oTemplate = outputTemplate.to_string();
+					let fTemplate = formatTemplate.to_string();
+					
 					cx.spawn(async {
 						let _ = tokio::task::spawn(async move {
+							let vdl = generateDownloader(bin, dir, oTemplate, fTemplate);
 							vdl.listFormats(url.into());
 						}).await;
 					})
 				},
+				
 				"List Formats"
 			}
 			
@@ -67,15 +52,29 @@ pub fn App(cx: Scope) -> Element
 			{
 				onclick: move |_| {
 					let url = videoUrl.to_string();
-					let mut vdl = vdl2.clone();
+					let bin = binary.to_string();
+					let dir = outputDir.to_string();
+					let oTemplate = outputTemplate.to_string();
+					let fTemplate = formatTemplate.to_string();
+					
 					cx.spawn(async {
 						let _ = tokio::task::spawn(async move {
+							let vdl = generateDownloader(bin, dir, oTemplate, fTemplate);
 							vdl.download(url.into());
 						}).await;
 					})
 				},
+				
 				"Download"
 			}
 		}
 	});
+}
+
+fn generateDownloader(binary: String, outputDirectory: String, outputTemplate: String, formatTemplate: String) -> VideoDownloader
+{
+	let mut vdl1 = VideoDownloader::new(binary.into(), outputDirectory.into());
+	vdl1.outputTemplate.set(outputTemplate.into());
+	vdl1.formatTemplate = formatTemplate.into();
+	return vdl1;
 }
