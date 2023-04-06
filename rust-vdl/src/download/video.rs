@@ -40,7 +40,7 @@ impl VideoDownloader
 		self.outputDirectory = outDir.into();
 	}
 	
-	pub fn download(&mut self, video: String)
+	pub fn download(&self, video: String)
 	{
 		let proc = self.spawnCommand(vec![
 			"-S", self.formatTemplate.as_str(),
@@ -57,10 +57,9 @@ impl VideoDownloader
 		};
 	}
 	
-	pub fn listFormats(&mut self, video: String)
+	pub fn listFormats(&self, video: String)
 	{
 		let proc = self.spawnCommand(vec!["-F", video.as_str()]);
-		//self.processes.insert(video.to_owned(), proc.unwrap());
 		
 		match proc
 		{
