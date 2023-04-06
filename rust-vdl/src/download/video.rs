@@ -11,15 +11,17 @@ use crate::{
 
 pub struct VideoDownloader
 {
+	pub formatTemplate: String,
+	pub outputTemplate: OutputTemplateBuilder,
+	
 	binary: String,
 	outputDirectory: String,
-	outputTemplate: OutputTemplateBuilder,
 	processes: BTreeMap<String, Child>,
 }
 
 impl VideoDownloader
 {
-	pub fn new(binary: &str, outDir: &str) -> Self
+	pub fn new(binary: String, outDir: String) -> Self
 	{
 		return Self
 		{
@@ -29,32 +31,32 @@ impl VideoDownloader
 		};
 	}
 	
-	pub fn setBinary(&mut self, binary: &str)
+	pub fn setBinary(&mut self, binary: String)
 	{
 		self.binary = binary.into();
 	}
 	
-	pub fn setOutputDirectory(&mut self, outDir: &str)
+	pub fn setOutputDirectory(&mut self, outDir: String)
 	{
 		self.outputDirectory = outDir.into();
 	}
 	
-	pub fn cancel(&mut self, video: &str)
+	pub fn cancel(&mut self, video: String)
 	{
-		if let Some(_pair) = self.processes.get(video)
+		if let Some(_pair) = self.processes.get(&video)
 		{
 			//Fuck that process up
 		}
 	}
 	
-	pub fn download(&mut self, video: &str)
+	pub fn download(&mut self, video: String)
 	{
 		let proc = self.spawnCommand(vec![
-			"-S", DefaultFormatTemplate,
+			"-S", self.formatTemplate.as_str(),
 			"-f", "bv*+ba",
 			"-P", self.outputDirectory.as_str(),
 			"-o", self.outputTemplate.get().as_str(),
-			video
+			video.as_str(),
 		]);
 		
 		match proc
@@ -64,9 +66,9 @@ impl VideoDownloader
 		};
 	}
 	
-	pub fn listFormats(&mut self, video: &str)
+	pub fn listFormats(&mut self, video: String)
 	{
-		let proc = self.spawnCommand(vec!["-F", video]);
+		let proc = self.spawnCommand(vec!["-F", video.as_str()]);
 		//self.processes.insert(video.to_owned(), proc.unwrap());
 		
 		match proc
@@ -105,9 +107,11 @@ impl Default for VideoDownloader
 	{
 		return Self
 		{
+			formatTemplate: DefaultFormatTemplate.into(),
+			outputTemplate: Default::default(),
+			
 			binary: DefaultBinary.into(),
 			outputDirectory: DefaultOutputDirectory.into(),
-			outputTemplate: Default::default(),
 			processes: Default::default(),
 		};
     }
