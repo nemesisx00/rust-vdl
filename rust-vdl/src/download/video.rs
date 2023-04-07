@@ -4,19 +4,17 @@
 use std::process::{Child, Command, ChildStderr, ChildStdout, Stdio};
 use std::io::{self, BufRead, BufReader};
 use crate::{
-	constants::{DefaultBinary, DefaultFormatTemplate, DefaultFormatSearch, DefaultOutputDirectory},
 	download::template::OutputTemplateBuilder,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct VideoDownloader
 {
+	pub binary: String,
 	pub formatTemplate: String,
 	pub formatSearch: String,
+	pub outputDirectory: String,
 	pub outputTemplate: OutputTemplateBuilder,
-	
-	binary: String,
-	outputDirectory: String,
 }
 
 impl VideoDownloader
@@ -29,16 +27,6 @@ impl VideoDownloader
 			outputDirectory: outDir.into(),
 			..Default::default()
 		};
-	}
-	
-	pub fn setBinary(&mut self, binary: String)
-	{
-		self.binary = binary.into();
-	}
-	
-	pub fn setOutputDirectory(&mut self, outDir: String)
-	{
-		self.outputDirectory = outDir.into();
 	}
 	
 	pub fn download(&self, video: String)
@@ -112,20 +100,4 @@ impl VideoDownloader
 			None => println!("No ChildStderr"),
 		}
 	}
-}
-
-impl Default for VideoDownloader
-{
-    fn default() -> Self
-	{
-		return Self
-		{
-			formatTemplate: DefaultFormatTemplate.into(),
-			formatSearch: DefaultFormatSearch.into(),
-			outputTemplate: Default::default(),
-			
-			binary: DefaultBinary.into(),
-			outputDirectory: DefaultOutputDirectory.into(),
-		};
-    }
 }
