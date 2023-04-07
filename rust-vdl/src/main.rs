@@ -39,8 +39,8 @@ fn mainMenu() -> MenuBar
 	let mut fileMenu = MenuBar::new();
 	fileMenu.add_native_item(MenuItem::Quit);
 	
-	let mut menubarMenu = MenuBar::new();
-	menubarMenu.add_submenu(FileMenuLabel, true, fileMenu);
+	let mut mainMenu = MenuBar::new();
+	mainMenu.add_submenu(FileMenuLabel, true, fileMenu);
 	
-	return menubarMenu;
+	return mainMenu;
 }

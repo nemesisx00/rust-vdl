@@ -2331,6 +2331,8 @@ dependencies = [
  "dioxus-desktop",
  "directories",
  "fermi",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

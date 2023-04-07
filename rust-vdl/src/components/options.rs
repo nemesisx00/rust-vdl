@@ -10,17 +10,17 @@ use crate::{
 
 pub fn Options(cx: Scope) -> Element
 {
-	let setBinary = use_set(cx, Binary);
-	let setFormatSearch = use_set(cx, FormatSearch);
-	let setFormatTemplate = use_set(cx, FormatTemplate);
-	let setOutputDir = use_set(cx, OutputDirectory);
-	let setOutputTemplate = use_set(cx, OutputTemplate);
-	
 	let binary = use_read(cx, Binary);
 	let formatSearch = use_read(cx, FormatSearch);
 	let formatTemplate = use_read(cx, FormatTemplate);
 	let outputDir = use_read(cx, OutputDirectory);
 	let outputTemplate = use_read(cx, OutputTemplate);
+	
+	let setBinary = use_set(cx, Binary);
+	let setFormatSearch = use_set(cx, FormatSearch);
+	let setFormatTemplate = use_set(cx, FormatTemplate);
+	let setOutputDir = use_set(cx, OutputDirectory);
+	let setOutputTemplate = use_set(cx, OutputTemplate);
 	
 	return cx.render(rsx!
 	{
