@@ -4,6 +4,7 @@
 mod components;
 mod constants;
 mod download;
+mod hooks;
 mod state;
 
 use dioxus_desktop::{

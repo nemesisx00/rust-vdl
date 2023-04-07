@@ -6,7 +6,8 @@ use fermi::{use_init_atom_root, use_read};
 use crate::{
 	components::{SimpleInput, Options},
 	download::VideoDownloader,
-	state::{Binary, FormatSearch, FormatTemplate, OutputDirectory, OutputTemplate}
+	hooks::useOnce,
+	state::{loadOptions, Binary, FormatSearch, FormatTemplate, OutputDirectory, OutputTemplate}
 };
 
 pub fn App(cx: Scope) -> Element
@@ -21,6 +22,8 @@ pub fn App(cx: Scope) -> Element
 	
 	let videoUrl = use_state(cx, || String::default());
 	let showOptions = use_state(cx, || false);
+	
+	useOnce(cx, || loadOptions(cx));
 	
 	return cx.render(rsx!
 	{

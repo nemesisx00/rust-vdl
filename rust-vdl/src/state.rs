@@ -59,6 +59,7 @@ pub fn loadOptions(cx: Scope)
 					setFormatTemplate(data.formatTemplate);
 					setOutputDir(data.outputDirectory);
 					setOutputTemplate(data.outputTemplate);
+					println!("Options loaded!")
 				}
 			}
 		}
