@@ -1,5 +1,6 @@
 **/*.rs.bk
 **/*.pdb
 **/node_modules/
+.vscode/
 rust-vdl/target/
 rust-vdl/static/app.css
