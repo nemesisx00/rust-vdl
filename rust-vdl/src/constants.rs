@@ -4,8 +4,16 @@
 pub const AppTitle: &'static str = "Rust Video Downloader";
 pub const FileMenuLabel: &'static str = "&File";
 
-pub const DefaultBinary: &'static str = "yt-dlp";
-pub const DefaultFormatTemplate: &'static str = "vcodec:av1,acodec:opus";
-pub const DefaultFormatSearch: &'static str = "bv*+ba/b";
-pub const DefaultOutputDirectory: &'static str = ".";
-pub const DefaultOutputTemplate: &'static str = "%(upload_date)s - %(title)s.%(ext)s";
+pub const HtmlMain: &'static str = r#"
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Rust Video Downloader</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="stylesheet" href="/static/app.css" />
+	</head>
+	<body>
+		<div id="main"></div>
+	</body>
+</html>
+"#;

@@ -4,23 +4,37 @@
 mod components;
 mod constants;
 mod download;
+mod state;
 
-use dioxus_desktop::Config;
-use dioxus_desktop::tao::{
-	menu::{MenuBar, MenuItem},
-	window::WindowBuilder,
+use dioxus_desktop::{
+	Config,
+	tao::{
+		menu::{MenuBar, MenuItem},
+		window::WindowBuilder,
+	},
 };
 use crate::{
 	components::App,
-	constants::{AppTitle, FileMenuLabel},
+	constants::{AppTitle, FileMenuLabel, HtmlMain},
 };
 
 fn main()
 {
-	dioxus_desktop::launch_cfg(App, buildConfig());
+	dioxus_desktop::launch_cfg(App, mainWindowConfig());
 }
 
-fn buildConfig() -> Config
+fn mainWindowConfig() -> Config
+{
+	let win = WindowBuilder::default()
+		.with_menu(mainMenu())
+		.with_title(AppTitle);
+	
+	return Config::new()
+		.with_custom_index(HtmlMain.into())
+		.with_window(win);
+}
+
+fn mainMenu() -> MenuBar
 {
 	let mut fileMenu = MenuBar::new();
 	fileMenu.add_native_item(MenuItem::Quit);
@@ -28,10 +42,5 @@ fn buildConfig() -> Config
 	let mut menubarMenu = MenuBar::new();
 	menubarMenu.add_submenu(FileMenuLabel, true, fileMenu);
 	
-	let win = WindowBuilder::default()
-		.with_menu(menubarMenu)
-		.with_title(AppTitle);
-	
-	return Config::new()
-		.with_window(win);
+	return menubarMenu;
 }
