@@ -3,5 +3,8 @@
 
 mod app;
 mod input;
+mod options;
 
 pub use app::App;
+pub use input::SimpleInput;
+pub use options::Options;

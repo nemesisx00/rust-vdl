@@ -13,7 +13,7 @@ pub fn SimpleInput<'a>(cx: Scope,
 	let clazz = match class
 	{
 		Some(c) => c.into(),
-		None => "row".to_string(),
+		None => "inputRow".to_string(),
 	};
 	
 	return cx.render(rsx!

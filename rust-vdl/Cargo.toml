@@ -11,4 +11,5 @@ publish = false
 dioxus = "0.3.2"
 dioxus-desktop = "0.3.0"
 directories = "5.0.0"
+fermi = "0.3.0"
 tokio = "1.27.0"

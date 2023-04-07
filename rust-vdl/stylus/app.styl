@@ -11,6 +11,7 @@ body
 
 h1,h2,h3,h4,h5,h6
 	margin 0
+	padding 0
 	text-align center
 
 button
@@ -31,6 +32,16 @@ input
 
 #main
 
+	& .inputRow
+		flex(row)
+		margin 5px 0
+			
+		& label
+			min-width 135px
+		
+		& input
+			flex-grow 1
+	
 	& .app
 		flex(column)
 		width 90%
@@ -39,11 +50,7 @@ input
 		
 		& .row
 			flex(row)
-			margin 5px 0
-				
-			& label
-				min-width 135px
-			
+		
 			& button
 				flex-grow 1
 				height 40px
@@ -51,6 +58,29 @@ input
 				
 				&:last-child
 					margin-right 0
+	
+	& #showOptions
+		position fixed
+		right 10px
+		top 10px
+		width 50px
+		height 50px
+		z-index 100
+	
+	& .optionsOverlay
+		position fixed
+		left 0
+		top 0
+		width 100%
+		height 100%
+		background-color backgroundDark
+		
+		& .options
+			position fixed
+			left 10%
+			top 20%
+			width 80%
+			height 60%
 			
-			& input
-				flex-grow 1
+			& h1
+				margin-bottom 10px
