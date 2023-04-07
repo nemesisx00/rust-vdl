@@ -1,9 +1,7 @@
 #![allow(non_snake_case, non_upper_case_globals)]
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
-use crate::constants::DefaultOutputTemplate;
-
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct OutputTemplateBuilder
 {
 	template: String,
@@ -141,17 +139,6 @@ impl OutputTemplateBuilder
 			OutputTemplateVariable::WebpageUrlBasename			=> "webpage_url_basename".to_string(),
 			OutputTemplateVariable::WebpageUrlDomain			=> "webpage_url_domain".to_string(),
 			OutputTemplateVariable::OriginalUrl					=> "original_url".to_string(),
-		};
-	}
-}
-
-impl Default for OutputTemplateBuilder
-{
-	fn default() -> Self
-	{
-		return Self
-		{
-			template: DefaultOutputTemplate.into(),
 		};
 	}
 }
