@@ -6,6 +6,7 @@ body
 	font-family -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif
 	margin 0
 	padding 0
+	user-select none
 	-moz-osx-font-smoothing grayscale
 	-webkit-font-smoothing antialiased
 
@@ -68,7 +69,13 @@ hr
 		& .video
 			margin-bottom 10px
 			
+			& input
+				padding 0 5px
+			
 			& #showOptions
+				flex(column)
+				justify-content center
+				height 41px
 				margin-left 10px
 				z-index 100
 	
@@ -83,9 +90,8 @@ hr
 		& .options
 			position fixed
 			left 10%
-			top 20%
+			top 50px
 			width 80%
-			height 60%
 			
 			& h1
 				margin-bottom 10px

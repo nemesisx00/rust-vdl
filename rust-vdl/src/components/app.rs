@@ -47,7 +47,13 @@ pub fn App(cx: Scope) -> Element
 					oninput: move |evt: FormEvent| videoUrl.set(evt.value.to_owned())
 				}
 				
-				button { id: "showOptions", onclick: move |_| showOptions.set(!showOptions), "Opt" }
+				button
+				{
+					id: "showOptions",
+					onclick: move |_| showOptions.set(!showOptions),
+					
+					img { alt: "Options", src: "src/assets/options.png" }
+				}
 			}
 			
 			div

@@ -2,5 +2,6 @@
 **/*.pdb
 **/node_modules/
 .vscode/
+rust-vdl/dist/
 rust-vdl/target/
-rust-vdl/static/app.css
+rust-vdl/src/assets/app.css
