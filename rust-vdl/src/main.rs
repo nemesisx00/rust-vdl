@@ -16,7 +16,7 @@ use dioxus_desktop::{
 };
 use crate::{
 	components::App,
-	constants::{AppTitle, FileMenuLabel, HtmlMain},
+	constants::{AppTitle, FileMenuLabel, MinimumWindowSize, HtmlMain},
 };
 
 fn main()
@@ -27,7 +27,9 @@ fn main()
 fn mainWindowConfig() -> Config
 {
 	let win = WindowBuilder::default()
+		.with_inner_size(MinimumWindowSize)
 		.with_menu(mainMenu())
+		.with_min_inner_size(MinimumWindowSize)
 		.with_title(AppTitle);
 	
 	return Config::new()

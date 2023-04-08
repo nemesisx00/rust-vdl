@@ -4,7 +4,7 @@
 use dioxus::prelude::*;
 use fermi::{use_read, use_set};
 use crate::{
-	components::input::SimpleInput,
+	components::input::LabelInputRow,
 	state::{saveOptions, Binary, FormatSearch, FormatTemplate, OutputDirectory, OutputTemplate}
 };
 
@@ -34,11 +34,11 @@ pub fn Options(cx: Scope) -> Element
 				
 				h1 { "Options" }
 				
-				SimpleInput { label: "Binary".into(), name: "binary".into(), value: binary.into(), onInput: move |evt: FormEvent| { setBinary(evt.value.to_owned()); saveOptions(cx); } }
-				SimpleInput { label: "Format Search".into(), name: "format".into(), value: formatSearch.into(), onInput: move |evt: FormEvent| { setFormatSearch(evt.value.to_owned()); saveOptions(cx); } }
-				SimpleInput { label: "Format Template".into(), name: "ftemplate".into(), value: formatTemplate.into(), onInput: move |evt: FormEvent| { setFormatTemplate(evt.value.to_owned()); saveOptions(cx); } }
-				SimpleInput { label: "Output".into(), name: "output".into(), value: outputDir.into(), onInput: move |evt: FormEvent| { setOutputDir(evt.value.to_owned()); saveOptions(cx); } }
-				SimpleInput { label: "Output Template".into(), name: "otemplate".into(), value: outputTemplate.into(), onInput: move |evt: FormEvent| { setOutputTemplate(evt.value.to_owned()); saveOptions(cx); } }
+				LabelInputRow { label: "Binary".into(), name: "binary".into(), value: binary.into(), onInput: move |evt: FormEvent| { setBinary(evt.value.to_owned()); saveOptions(cx); } }
+				LabelInputRow { label: "Format Search".into(), name: "format".into(), value: formatSearch.into(), onInput: move |evt: FormEvent| { setFormatSearch(evt.value.to_owned()); saveOptions(cx); } }
+				LabelInputRow { label: "Format Template".into(), name: "ftemplate".into(), value: formatTemplate.into(), onInput: move |evt: FormEvent| { setFormatTemplate(evt.value.to_owned()); saveOptions(cx); } }
+				LabelInputRow { label: "Output".into(), name: "output".into(), value: outputDir.into(), onInput: move |evt: FormEvent| { setOutputDir(evt.value.to_owned()); saveOptions(cx); } }
+				LabelInputRow { label: "Output Template".into(), name: "otemplate".into(), value: outputTemplate.into(), onInput: move |evt: FormEvent| { setOutputTemplate(evt.value.to_owned()); saveOptions(cx); } }
 			}
 		}
 	});

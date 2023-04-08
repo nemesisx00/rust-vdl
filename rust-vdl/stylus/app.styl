@@ -9,11 +9,6 @@ body
 	-moz-osx-font-smoothing grayscale
 	-webkit-font-smoothing antialiased
 
-h1,h2,h3,h4,h5,h6
-	margin 0
-	padding 0
-	text-align center
-
 button
 	background-color backgroundLight
 	border-color backgroundDark
@@ -29,6 +24,17 @@ input
 	border-radius 5px
 	color offWhite
 	padding 5px
+	
+	&::placeholder
+		color offWhite
+
+h1,h2,h3,h4,h5,h6
+	margin 0
+	padding 0
+	text-align center
+
+hr
+	width 90%
 
 #main
 
@@ -58,14 +64,13 @@ input
 				
 				&:last-child
 					margin-right 0
-	
-	& #showOptions
-		position fixed
-		right 10px
-		top 10px
-		width 50px
-		height 50px
-		z-index 100
+		
+		& .video
+			margin-bottom 10px
+			
+			& #showOptions
+				margin-left 10px
+				z-index 100
 	
 	& .optionsOverlay
 		position fixed

@@ -6,5 +6,5 @@ mod input;
 mod options;
 
 pub use app::App;
-pub use input::SimpleInput;
+pub use input::{InputRow, LabelInputRow};
 pub use options::Options;

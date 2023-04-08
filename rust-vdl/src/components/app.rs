@@ -4,7 +4,7 @@
 use dioxus::prelude::*;
 use fermi::{use_init_atom_root, use_read};
 use crate::{
-	components::{SimpleInput, Options},
+	components::Options,
 	download::VideoDownloader,
 	hooks::useOnce,
 	state::{loadOptions, Binary, FormatSearch, FormatTemplate, OutputDirectory, OutputTemplate}
@@ -27,8 +27,6 @@ pub fn App(cx: Scope) -> Element
 	
 	return cx.render(rsx!
 	{
-		button { id: "showOptions", onclick: move |_| showOptions.set(!showOptions), "Opt" }
-		
 		if **showOptions
 		{
 			rsx!(Options {})
@@ -38,7 +36,19 @@ pub fn App(cx: Scope) -> Element
 		{
 			class: "app",
 			
-			SimpleInput { label: "Video".into(), name: "video".into(), value: videoUrl.to_string(), onInput: move |evt: FormEvent| videoUrl.set(evt.value.to_owned()) }
+			div
+			{
+				class: "inputRow video",
+				input
+				{
+					r#type: "text",
+					placeholder: "Enter the video URL or ID here",
+					value: "{videoUrl}",
+					oninput: move |evt: FormEvent| videoUrl.set(evt.value.to_owned())
+				}
+				
+				button { id: "showOptions", onclick: move |_| showOptions.set(!showOptions), "Opt" }
+			}
 			
 			div
 			{
@@ -77,6 +87,13 @@ pub fn App(cx: Scope) -> Element
 					
 					"Download"
 				}
+			}
+			
+			hr {}
+			
+			div
+			{
+				id: "currentDownloads",
 			}
 		}
 	});
