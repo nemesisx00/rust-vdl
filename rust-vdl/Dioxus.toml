@@ -1,0 +1,21 @@
+[application]
+
+# App (Project) Name
+name = "rust-vdl"
+default_platform = "desktop"
+out_dir = "dist"
+asset_dir = "static"
+
+[web.app]
+title = "Rust Video Downloader"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src", "static"]
+
+[web.resource]
+style = []
+script = []
+
+[web.resource.dev]
+script = []

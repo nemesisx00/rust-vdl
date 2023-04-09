@@ -4,4 +4,4 @@
 .vscode/
 rust-vdl/dist/
 rust-vdl/target/
-rust-vdl/src/assets/app.css
+rust-vdl/static/assets/app.css

@@ -13,7 +13,7 @@ pub const HtmlMain: &'static str = r#"
 	<head>
 		<title>Rust Video Downloader</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<link rel="stylesheet" href="src/assets/app.css" />
+		<link rel="stylesheet" href="./assets/app.css" />
 	</head>
 	<body>
 		<div id="main"></div>

@@ -52,7 +52,7 @@ pub fn App(cx: Scope) -> Element
 					id: "showOptions",
 					onclick: move |_| showOptions.set(!showOptions),
 					
-					img { alt: "Options", src: "src/assets/options.png" }
+					img { alt: "Options", src: "./assets/options.png" }
 				}
 			}
 			
