@@ -4,7 +4,9 @@
 mod app;
 mod input;
 mod options;
+mod progress;
 
 pub use app::App;
 pub use input::{InputRow, LabelInputRow};
 pub use options::Options;
+pub use progress::DownloadElement;

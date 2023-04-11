@@ -7,7 +7,67 @@ use crate::{
 	download::template::OutputTemplateBuilder,
 };
 
-#[derive(Clone, Default)]
+pub const NoOpHandler: fn(DownloadProgress) = |_| {};
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DownloadProgress
+{
+	pub estimatedSize: String,
+	pub estimatedTime: String,
+	pub fragmentStatus: String,
+	pub percentComplete: String,
+	pub transferRate: String,
+}
+
+impl DownloadProgress
+{
+	pub fn isValid(&self) -> bool
+	{
+		return !self.percentComplete.is_empty();
+	}
+	
+	pub fn toString(&self) -> String
+	{
+		return format!("{} {} {} {}", self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
+	}
+}
+
+impl std::fmt::Display for DownloadProgress
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+	{
+		return f.write_str(self.toString().as_str());
+    }
+}
+
+impl From<String> for DownloadProgress
+{
+	fn from(value: String) -> Self
+	{
+		let mut instance = Self::default();
+		
+		value.split_whitespace()
+			.for_each(|w| {
+				w.ends_with("%").then(|| instance.percentComplete = w.to_owned());
+				w.ends_with("B").then(|| instance.estimatedSize = w.to_owned());
+				w.ends_with("B/s").then(|| instance.transferRate = w.to_owned());
+				w.find(":").is_some().then(|| instance.estimatedTime = w.to_owned());
+				w.ends_with(")").then(|| instance.fragmentStatus = w[..w.len()-1].to_owned());
+			});
+		
+		return instance;
+	}
+}
+
+impl Into<String> for DownloadProgress
+{
+	fn into(self) -> String { return self.toString(); }
+}
+
+unsafe impl Send for DownloadProgress {}
+
+// --------------------------------------------------
+
 pub struct VideoDownloader
 {
 	pub binary: String,
@@ -15,6 +75,8 @@ pub struct VideoDownloader
 	pub formatSearch: String,
 	pub outputDirectory: String,
 	pub outputTemplate: OutputTemplateBuilder,
+	
+	pub onProgressUpdate: Box<dyn Fn(DownloadProgress)>,
 }
 
 impl VideoDownloader
@@ -25,7 +87,12 @@ impl VideoDownloader
 		{
 			binary: binary.into(),
 			outputDirectory: outDir.into(),
-			..Default::default()
+			
+			formatTemplate: String::default(),
+			formatSearch: String::default(),
+			outputTemplate: OutputTemplateBuilder::default(),
+			
+			onProgressUpdate: Box::new(NoOpHandler),
 		};
 	}
 	
@@ -85,6 +152,7 @@ impl VideoDownloader
 							if progress.isValid()
 							{
 								println!("{}", progress);
+								(self.onProgressUpdate)(progress);
 							}
 						}
 						else
@@ -109,61 +177,4 @@ impl VideoDownloader
 			None => println!("No ChildStderr"),
 		}
 	}
-}
-
-// --------------------------------------------------
-
-#[derive(Clone, Debug, Default)]
-pub struct DownloadProgress
-{
-	pub estimatedSize: String,
-	pub estimatedTime: String,
-	pub fragmentStatus: String,
-	pub percentComplete: String,
-	pub transferRate: String,
-}
-
-impl DownloadProgress
-{
-	fn isValid(&self) -> bool
-	{
-		return !self.percentComplete.is_empty();
-	}
-	
-	fn toString(&self) -> String
-	{
-		return format!("{} {} {} {}", self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
-	}
-}
-
-impl std::fmt::Display for DownloadProgress
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-	{
-		return f.write_str(self.toString().as_str());
-    }
-}
-
-impl From<String> for DownloadProgress
-{
-	fn from(value: String) -> Self
-	{
-		let mut instance = Self::default();
-		
-		value.split_whitespace()
-			.for_each(|w| {
-				w.ends_with("%").then(|| instance.percentComplete = w.to_owned());
-				w.ends_with("B").then(|| instance.estimatedSize = w.to_owned());
-				w.ends_with("B/s").then(|| instance.transferRate = w.to_owned());
-				w.find(":").is_some().then(|| instance.estimatedTime = w.to_owned());
-				w.ends_with(")").then(|| instance.fragmentStatus = w[..w.len()-1].to_owned());
-			});
-		
-		return instance;
-	}
-}
-
-impl Into<String> for DownloadProgress
-{
-	fn into(self) -> String { return self.toString(); }
 }

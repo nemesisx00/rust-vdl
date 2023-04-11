@@ -2,26 +2,20 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
 use dioxus::prelude::*;
-use fermi::{use_init_atom_root, use_read};
+use std::collections::BTreeMap;
 use crate::{
-	components::Options,
-	download::VideoDownloader,
+	components::{DownloadElement, Options},
 	hooks::useOnce,
-	state::{loadOptions, Binary, FormatSearch, FormatTemplate, OutputDirectory, OutputTemplate}
+	state::loadOptions,
 };
 
 pub fn App(cx: Scope) -> Element
 {
-	use_init_atom_root(cx);
-	
-	let binary = use_read(cx, Binary);
-	let formatSearch = use_read(cx, FormatSearch);
-	let formatTemplate = use_read(cx, FormatTemplate);
-	let outputDir = use_read(cx, OutputDirectory);
-	let outputTemplate = use_read(cx, OutputTemplate);
+	fermi::use_init_atom_root(cx);
 	
 	let videoUrl = use_state(cx, || String::default());
 	let showOptions = use_state(cx, || false);
+	let downloadUrls = use_ref(cx, || BTreeMap::<usize, String>::default());
 	
 	useOnce(cx, || loadOptions(cx));
 	
@@ -64,31 +58,12 @@ pub fn App(cx: Scope) -> Element
 				{
 					onclick: move |_|
 					{
-						let url = videoUrl.to_string();
-						to_owned![binary, formatSearch, formatTemplate, outputDir, outputTemplate];
-						cx.spawn(async {
-							let _ = tokio::task::spawn(async {
-								let vdl = generateDownloader(binary, formatTemplate, formatSearch, outputDir, outputTemplate);
-								vdl.listFormats(url);
-							}).await;
-						})
-					},
-					
-					"List Formats"
-				}
-				
-				button
-				{
-					onclick: move |_|
-					{
-						let url = videoUrl.to_string();
-						to_owned![binary, formatSearch, formatTemplate, outputDir, outputTemplate];
-						cx.spawn(async {
-							let _ = tokio::task::spawn(async {
-								let vdl = generateDownloader(binary, formatTemplate, formatSearch, outputDir, outputTemplate);
-								vdl.download(url);
-							}).await;
-						})
+						let len = downloadUrls.read().len();
+						let mut urls = downloadUrls.write();
+						urls.values()
+							.find(|v| **v == videoUrl.to_string())
+							.is_none()
+							.then(|| urls.insert(len, videoUrl.to_string()));
 					},
 					
 					"Download"
@@ -99,17 +74,13 @@ pub fn App(cx: Scope) -> Element
 			
 			div
 			{
-				id: "currentDownloads",
+				id: "downloads",
+				
+				for (key, url) in &*downloadUrls.read()
+				{
+					DownloadElement { key: "{key}", videoUrl: url.to_owned() }
+				}
 			}
 		}
 	});
-}
-
-fn generateDownloader(binary: String, formatTemplate: String, formatSearch: String, outputDirectory: String, outputTemplate: String) -> VideoDownloader
-{
-	let mut vdl = VideoDownloader::new(binary.into(), outputDirectory.into());
-	vdl.outputTemplate.set(outputTemplate.into());
-	vdl.formatTemplate = formatTemplate.into();
-	vdl.formatSearch = formatSearch.into();
-	return vdl;
 }
