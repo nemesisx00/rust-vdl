@@ -71,8 +71,8 @@ unsafe impl Send for DownloadProgress {}
 pub struct VideoDownloader
 {
 	pub binary: String,
+	pub formatSort: String,
 	pub formatTemplate: String,
-	pub formatSearch: String,
 	pub outputDirectory: String,
 	pub outputTemplate: OutputTemplateBuilder,
 	
@@ -89,7 +89,7 @@ impl VideoDownloader
 			outputDirectory: outDir.into(),
 			
 			formatTemplate: String::default(),
-			formatSearch: String::default(),
+			formatSort: String::default(),
 			outputTemplate: OutputTemplateBuilder::default(),
 			
 			onProgressUpdate: Box::new(NoOpHandler),
@@ -98,30 +98,58 @@ impl VideoDownloader
 	
 	pub fn download(&self, video: String)
 	{
-		let proc = self.spawnCommand(vec![
-			"-S", self.formatTemplate.as_str(),
-			"-f", self.formatSearch.as_str(),
-			"-P", self.outputDirectory.as_str(),
-			"-o", self.outputTemplate.get().as_str(),
-			video.as_str(),
-		].as_mut());
-		
-		match proc
+		if !video.is_empty()
 		{
-			Ok(mut child) => self.processOutput(child.stdout.take(), child.stderr.take()),
-			Err(e) => println!("Error downloading video: {} -> {}", video, e)
-		};
+			let mut args = vec![];
+			
+			if self.formatSort.len() > 0
+			{
+				args.push("-S");
+				args.push(&self.formatSort.as_str());
+			}
+			
+			if !self.formatTemplate.is_empty()
+			{
+				args.push("-f");
+				args.push(self.formatTemplate.as_str());
+			}
+			
+			if !self.outputDirectory.is_empty()
+			{
+				args.push("-P");
+				args.push(self.outputDirectory.as_str());
+			}
+			
+			let ot = self.outputTemplate.get();
+			if !ot.is_empty()
+			{
+				args.push("-o");
+				args.push(ot.as_str());
+			}
+			
+			args.push(video.as_str());
+			
+			let proc = self.spawnCommand(args.as_mut());
+			match proc
+			{
+				Ok(mut child) => self.processOutput(child.stdout.take(), child.stderr.take()),
+				Err(e) => println!("Error downloading video: {} -> {}", video, e)
+			};
+		}
 	}
 	
 	pub fn listFormats(&self, video: String)
 	{
-		let proc = self.spawnCommand(vec!["-F", video.as_str()].as_mut());
-		
-		match proc
+		if !video.is_empty()
 		{
-			Ok(mut child) => self.processOutput(child.stdout.take(), child.stderr.take()),
-			Err(e) => println!("Error getting list of available formats for video: {} -> {}", video, e)
-		};
+			let proc = self.spawnCommand(vec!["-F", video.as_str()].as_mut());
+			
+			match proc
+			{
+				Ok(mut child) => self.processOutput(child.stdout.take(), child.stderr.take()),
+				Err(e) => println!("Error getting list of available formats for video: {} -> {}", video, e)
+			};
+		}
 	}
 	
 	fn spawnCommand(&self, args: &mut Vec<&str>) -> io::Result<Child>

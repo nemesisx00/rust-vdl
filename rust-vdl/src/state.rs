@@ -9,13 +9,13 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 
 const DefaultBinary: &'static str = "yt-dlp";
-const DefaultFormatSearch: &'static str = "bv*+ba/b";
-const DefaultFormatTemplate: &'static str = "vcodec:av1,acodec:opus";
+const DefaultFormatSort: &'static str = "";
+const DefaultFormatTemplate: &'static str = "bv*+ba/b";
 const DefaultOutputDirectory: &'static str = ".";
 const DefaultOutputTemplate: &'static str = "%(upload_date)s - %(title)s.%(ext)s";
 
 pub static Binary: Atom<String> = |_| DefaultBinary.to_string();
-pub static FormatSearch: Atom<String> = |_| DefaultFormatSearch.to_string();
+pub static FormatSort: Atom<String> = |_| DefaultFormatSort.to_string();
 pub static FormatTemplate: Atom<String> = |_| DefaultFormatTemplate.to_string();
 pub static OutputDirectory: Atom<String> = |_| getUserDownloadsDir();
 pub static OutputTemplate: Atom<String> = |_| DefaultOutputTemplate.to_string();
@@ -24,7 +24,7 @@ pub static OutputTemplate: Atom<String> = |_| DefaultOutputTemplate.to_string();
 struct OptionsData
 {
 	pub binary: String,
-	pub formatSearch: String,
+	pub formatSort: String,
 	pub formatTemplate: String,
 	pub outputDirectory: String,
 	pub outputTemplate: String,
@@ -32,15 +32,8 @@ struct OptionsData
 
 pub fn loadOptions(cx: Scope)
 {
-	//Dioxus hooks need to be accessed in the same order every time, even if you're not using them all.
-	let _ = use_read(cx, Binary);
-	let _ = use_read(cx, FormatSearch);
-	let _ = use_read(cx, FormatTemplate);
-	let _ = use_read(cx, OutputDirectory);
-	let _ = use_read(cx, OutputTemplate);
-	
 	let setBinary = use_set(cx, Binary);
-	let setFormatSearch = use_set(cx, FormatSearch);
+	let setFormatSort = use_set(cx, FormatSort);
 	let setFormatTemplate = use_set(cx, FormatTemplate);
 	let setOutputDir = use_set(cx, OutputDirectory);
 	let setOutputTemplate = use_set(cx, OutputTemplate);
@@ -55,7 +48,7 @@ pub fn loadOptions(cx: Scope)
 				if let Ok(data) = serde_json::from_str::<OptionsData>(json.as_str())
 				{
 					setBinary(data.binary);
-					setFormatSearch(data.formatSearch);
+					setFormatSort(data.formatSort);
 					setFormatTemplate(data.formatTemplate);
 					setOutputDir(data.outputDirectory);
 					setOutputTemplate(data.outputTemplate);
@@ -69,7 +62,7 @@ pub fn loadOptions(cx: Scope)
 pub fn saveOptions(cx: Scope)
 {
 	let binary = use_read(cx, Binary);
-	let formatSearch = use_read(cx, FormatSearch);
+	let formatSort = use_read(cx, FormatSort);
 	let formatTemplate = use_read(cx, FormatTemplate);
 	let outputDirectory = use_read(cx, OutputDirectory);
 	let outputTemplate = use_read(cx, OutputTemplate);
@@ -77,7 +70,7 @@ pub fn saveOptions(cx: Scope)
 	let data = OptionsData
 	{
 		binary: binary.into(),
-		formatSearch: formatSearch.into(),
+		formatSort: formatSort.into(),
 		formatTemplate: formatTemplate.into(),
 		outputDirectory: outputDirectory.into(),
 		outputTemplate: outputTemplate.into(),

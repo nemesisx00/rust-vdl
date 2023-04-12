@@ -6,7 +6,7 @@ use fermi::use_read;
 use futures::StreamExt;
 use crate::{
 	download::{DownloadProgress, VideoDownloader},
-	state::{Binary, FormatSearch, FormatTemplate, OutputDirectory, OutputTemplate},
+	state::{Binary, FormatSort, FormatTemplate, OutputDirectory, OutputTemplate},
 };
 
 #[inline_props]
@@ -26,16 +26,16 @@ pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
 	startDownloader(cx, ||
 	{
 		let binary = use_read(cx, Binary);
-		let formatSearch = use_read(cx, FormatSearch);
+		let formatSort = use_read(cx, FormatSort);
 		let formatTemplate = use_read(cx, FormatTemplate);
 		let outputDir = use_read(cx, OutputDirectory);
 		let outputTemplate = use_read(cx, OutputTemplate);
 		
-		to_owned![videoUrl, binary, formatSearch, formatTemplate, outputDir, outputTemplate, cr];
+		to_owned![videoUrl, binary, formatSort, formatTemplate, outputDir, outputTemplate, cr];
 		tokio::task::spawn(async
 		{
 			let vdl = generateDownloader(
-				binary, formatTemplate, formatSearch, outputDir, outputTemplate,
+				binary, formatSort, formatTemplate, outputDir, outputTemplate,
 				move |dp| cr.send(dp)
 			);
 			vdl.download(videoUrl.into());
@@ -69,15 +69,15 @@ fn DownloadProgressBar(cx: Scope, progress: DownloadProgress) -> Element
 	});
 }
 
-fn generateDownloader(binary: String, formatTemplate: String, formatSearch: String, outputDirectory: String, outputTemplate: String,
+fn generateDownloader(binary: String, formatSort: String, formatTemplate: String, outputDirectory: String, outputTemplate: String,
 	handler: impl Fn(DownloadProgress) + 'static
 ) -> VideoDownloader
 {
 	let mut vdl = VideoDownloader::new(binary.into(), outputDirectory.into());
-	vdl.outputTemplate.set(outputTemplate.into());
+	vdl.formatSort = formatSort.into();
 	vdl.formatTemplate = formatTemplate.into();
-	vdl.formatSearch = formatSearch.into();
 	vdl.onProgressUpdate = Box::new(handler);
+	vdl.outputTemplate.set(outputTemplate.into());
 	return vdl;
 }
 
