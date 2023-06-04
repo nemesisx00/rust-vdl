@@ -57,6 +57,7 @@ pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
 			
 			h4 { "{title}" }
 			DownloadProgressBar { progress: progress.get().to_owned() }
+			
 			button
 			{
 				class: "haltResumeButton",
