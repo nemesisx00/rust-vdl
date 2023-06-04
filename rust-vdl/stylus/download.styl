@@ -1,10 +1,12 @@
 #main .app #downloads
 	flex(column)
+	padding-bottom 25px
 	
 	& .download
 		flex(column)
 		align-items center
-		border 1px solid backgroundLight
+		background-color backgroundContrast
+		border 1px solid backgroundBorder
 		border-radius 5px
 		justify-content space-evenly
 		margin 10px 0
@@ -43,5 +45,20 @@
 			& progress
 				width 100%
 		
-		& .haltResumeButton
-			width 50%
+		& .buttonRow
+			flex(row)
+			align-items center
+			justify-content space-between
+			width 100%
+			
+			& .haltResumeButton
+				min-width 250px
+				
+				&.centerMe
+					margin 0 auto
+			
+			& .removeButton
+				min-width 175px
+			
+			& pre
+				display none

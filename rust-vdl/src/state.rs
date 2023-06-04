@@ -5,6 +5,7 @@ use directories::{ProjectDirs, UserDirs};
 use dioxus::prelude::Scope;
 use fermi::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use crate::download::VideoDownloaderOptions;
@@ -13,6 +14,7 @@ const DefaultBinary: &'static str = "yt-dlp";
 
 pub static Binary: Atom<String> = |_| DefaultBinary.to_string();
 pub static DownloaderOptions: AtomRef<VideoDownloaderOptions> = |_| VideoDownloaderOptions::default();
+pub static UrlList: AtomRef<BTreeMap<usize, String>> = |_| BTreeMap::<usize, String>::default();
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 struct OptionsData

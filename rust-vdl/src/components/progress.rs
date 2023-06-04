@@ -4,17 +4,17 @@
 use dioxus::prelude::*;
 use fermi::{use_atom_ref, use_read};
 use futures::StreamExt;
-use crate::{
-	download::{DownloadProgress, VideoDownloader},
-	state::{Binary, DownloaderOptions},
-};
+use crate::download::{DownloadProgress, VideoDownloader};
+use crate::state::{Binary, DownloaderOptions, UrlList};
 
 #[inline_props]
-pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
+pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 {
 	let binary = use_read(cx, Binary);
 	let downloaderOptions = use_atom_ref(cx, DownloaderOptions);
+	let urlList = use_atom_ref(cx, UrlList);
 	
+	let displayRemove = use_state(cx, || false);
 	let downloadProcess = use_state(cx, || None);
 	let progress = use_state(cx, || DownloadProgress::default());
 	let title = use_state(cx, || videoUrl.to_owned());
@@ -40,14 +40,20 @@ pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
 		downloadProcess.set(Some(handle));
 	});
 	
+	(!progress.videoTitle.is_empty())
+		.then(|| title.set(progress.videoTitle.to_owned()));
+	
 	let btnString = match downloadProcess.is_some()
 	{
 		true => "Halt",
 		false => "Start",
 	};
 	
-	(!progress.videoTitle.is_empty())
-		.then(|| title.set(progress.videoTitle.to_owned()));
+	let haltResumeClass = match displayRemove.get()
+	{
+		true => "haltResumeButton",
+		false => "haltResumeButton centerMe",
+	};
 	
 	return cx.render(rsx!
 	{
@@ -58,30 +64,58 @@ pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
 			h4 { "{title}" }
 			DownloadProgressBar { progress: progress.get().to_owned() }
 			
-			button
+			div
 			{
-				class: "haltResumeButton",
-				onclick: move |_| {
-					match downloadProcess.get()
-					{
-						Some(handle) => {
-							handle.abort();
-							downloadProcess.set(None);
-						},
-						None => {
-							to_owned![videoUrl, binary, coroutineHandle];
-							let dlopts2 = downloaderOptions.read().clone();
-							let handle = tokio::task::spawn(async move {
-								let mut vdl = VideoDownloader::new(binary.into(), dlopts2.to_owned());
-								vdl.download(videoUrl.into(), Box::new(move |dp| coroutineHandle.send(dp))).await;
-							});
-							
-							downloadProcess.set(Some(handle));
-						},
-					};
-				},
+				class: "buttonRow",
 				
-				"{btnString}"
+				button
+				{
+					class: "{haltResumeClass}",
+					
+					onclick: move |_| {
+						match downloadProcess.get()
+						{
+							Some(handle) => {
+								handle.abort();
+								downloadProcess.set(None);
+								displayRemove.set(true);
+							},
+							None => {
+								to_owned![videoUrl, binary, coroutineHandle];
+								let dlopts2 = downloaderOptions.read().clone();
+								let handle = tokio::task::spawn(async move {
+									let mut vdl = VideoDownloader::new(binary.into(), dlopts2.to_owned());
+									vdl.download(videoUrl.into(), Box::new(move |dp| coroutineHandle.send(dp))).await;
+								});
+								
+								displayRemove.set(false);
+								downloadProcess.set(Some(handle));
+							},
+						};
+					},
+					
+					"{btnString}"
+				}
+				
+				displayRemove.then(|| rsx!
+				{
+					button
+					{
+						class: "removeButton",
+						
+						onclick: move |_| {
+							if let Some(handle) = downloadProcess.get()
+							{
+								handle.abort();
+								downloadProcess.set(None);
+							}
+							
+							urlList.write().remove_entry(indexKey);
+						},
+						
+						"Remove"
+					}
+				})
 			}
 		}
 	});
@@ -99,20 +133,24 @@ fn DownloadProgressBar(cx: Scope, progress: DownloadProgress) -> Element
 		false => "0",
 	};
 	
+	let percentDisplay = match progress.percentComplete != "0%"
+	{
+		true => progress.percentComplete.to_owned(),
+		false => "0%".to_string(),
+	};
+	
 	return cx.render(rsx!
 	{
 		div
 		{
 			class: "progress",
 			
-			progress { max: 100, value: percentNumber, "{percent}" }
-			h4 { "{progress.percentComplete}" }
+			progress { max: 100, value: percentNumber, "{percentDisplay}" }
+			h4 { "{percentDisplay}" }
 			
-			if !progress.transferRate.is_empty() || !progress.estimatedSize.is_empty() || !progress.estimatedTime.is_empty()
+			(!progress.transferRate.is_empty() || !progress.estimatedSize.is_empty() || !progress.estimatedTime.is_empty()).then(|| rsx!
 			{
-				rsx!
-				{
-					div
+				div
 					{
 						class: "progressDetails",
 						
@@ -120,8 +158,7 @@ fn DownloadProgressBar(cx: Scope, progress: DownloadProgress) -> Element
 						h6 { "Estimated Size: {progress.estimatedSize}" }
 						h6 { "Time Remaining: {progress.estimatedTime}" }
 					}
-				}
-			}
+			})
 		}
 	});
 }

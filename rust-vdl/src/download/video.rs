@@ -32,7 +32,7 @@ impl DownloadProgress
 	
 	pub fn toString(&self) -> String
 	{
-		return format!("{} {} {} {} {}", self.videoTitle, self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
+		return format!("{} {} {} {} {} {}", self.videoTitle, self.percentComplete, self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
 	}
 }
 

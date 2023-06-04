@@ -1,5 +1,5 @@
 body
-	background-color backgroundDark
+	background-color backgroundColor
 	color white
 	font-family -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif
 	margin 0
@@ -9,8 +9,8 @@ body
 	-webkit-font-smoothing antialiased
 
 button
-	background-color backgroundLight
-	border-color backgroundDark
+	background-color backgroundContrast
+	border-color backgroundColor
 	border-radius 10px
 	color white
 	cursor pointer
@@ -18,7 +18,7 @@ button
 	font-weight bold
 
 input
-	background-color backgroundLight
+	background-color backgroundContrast
 	border 0 none
 	border-radius 5px
 	color offWhite
@@ -34,18 +34,19 @@ h1,h2,h3,h4,h5,h6
 
 hr
 	width 90%
+	border-color backgroundBorder
 
 progress
 	appearance none
 	border none
 	border-radius 10em
-	background-color progressBackground
+	background-color greenHighlight
 	-moz-appearance none
 	-webkit-appearance none
 	
 	&::-moz-progress-bar
 		border-radius 10em
-		background-color progressBar
+		background-color greenHighlight
 	
 	&::-webkit-progress-bar
 		border-radius 10em
@@ -53,4 +54,4 @@ progress
 	
 	&::-webkit-progress-value
 		border-radius 10em
-		background-color progressBar
+		background-color greenHighlight

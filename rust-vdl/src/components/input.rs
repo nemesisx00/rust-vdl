@@ -75,7 +75,7 @@ pub fn LabelInputRow<'a>(cx: Scope,
 		div
 		{
 			class: "{c}",
-			label { r#for: "{name}", "{label}:" }
+			label { class: "labelInputLabel", r#for: "{name}", "{label}:" }
 			input
 			{
 				r#type: "text",
