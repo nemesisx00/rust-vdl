@@ -46,10 +46,8 @@ pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
 		false => "Start",
 	};
 	
-	if !progress.videoTitle.is_empty()
-	{
-		title.set(progress.videoTitle.to_owned());
-	}
+	(!progress.videoTitle.is_empty())
+		.then(|| title.set(progress.videoTitle.to_owned()));
 	
 	return cx.render(rsx!
 	{
@@ -57,7 +55,7 @@ pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
 		{
 			class: "download",
 			
-			h3 { "{title}" }
+			h4 { "{title}" }
 			DownloadProgressBar { progress: progress.get().to_owned() }
 			button
 			{
