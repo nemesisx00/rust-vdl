@@ -14,7 +14,7 @@ fn main()
 	}
 	
 	Command::new(program)
-		.args(&[firstArg, "npm run stylus"])
+		.args(&[firstArg, "npm run build"])
 		.output()
 		.expect("Failed to execute Stylus script");
 	

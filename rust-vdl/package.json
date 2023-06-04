@@ -2,6 +2,7 @@
   "name": "rust-vdl",
   "version": "1.0.0",
   "scripts": {
+    "build": "npm install && npm run stylus",
     "stylus": "stylus --compress ./stylus/main.styl --out ./static/assets/app.css"
   },
   "author": "Peter Lunneberg",
