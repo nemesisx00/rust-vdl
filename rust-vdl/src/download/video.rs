@@ -2,7 +2,6 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
 use std::process::Stdio;
-use std::io::{self};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command, ChildStderr, ChildStdout};
@@ -291,7 +290,7 @@ impl VideoDownloader
 		}
 	}
 	
-	fn spawnCommand(&self, args: &mut Vec<&str>) -> io::Result<Child>
+	fn spawnCommand(&self, args: &mut Vec<&str>) -> tokio::io::Result<Child>
 	{
 		let mut finalArgs = vec![Option_OutputOnNewLines.clone()];
 		finalArgs.append(args);
@@ -317,13 +316,19 @@ impl VideoDownloader
 						let progress = DownloadProgress::from(line.to_owned());
 						if progress.isValid()
 						{
-							println!("{}", progress);
+							if cfg!(debug_assertions)
+							{
+								println!("{}", progress);
+							}
 							(handler)(progress);
 						}
 					}
 					else
 					{
-						println!("{}", line);
+						if cfg!(debug_assertions)
+						{
+							println!("{}", line);
+						}
 					}
 				}
 			},
@@ -336,10 +341,13 @@ impl VideoDownloader
 				let mut reader = FramedRead::new(se, LinesCodec::new());
 				while let Some(line) = reader.next().await
 				{
-					match line
+					if cfg!(debug_assertions)
 					{
-						Ok(o) => println!("{}", o),
-						Err(e) => println!("{}", e),
+						match line
+						{
+							Ok(o) => println!("{}", o),
+							Err(e) => println!("{}", e),
+						}
 					}
 				}
 			},
