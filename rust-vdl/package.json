@@ -2,7 +2,7 @@
   "name": "rust-vdl",
   "version": "1.0.0",
   "scripts": {
-    "stylus": "stylus --compress ./stylus/app.styl --out ./static/assets/app.css"
+    "stylus": "stylus --compress ./stylus/main.styl --out ./static/assets/app.css"
   },
   "author": "Peter Lunneberg",
   "license": "GPL-3.0-or-later",

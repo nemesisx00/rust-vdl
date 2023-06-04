@@ -1,42 +1,3 @@
-@require "./mixins"
-
-body
-	background-color backgroundDark
-	color white
-	font-family -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif
-	margin 0
-	padding 0
-	user-select none
-	-moz-osx-font-smoothing grayscale
-	-webkit-font-smoothing antialiased
-
-button
-	background-color backgroundLight
-	border-color backgroundDark
-	border-radius 10px
-	color white
-	cursor pointer
-	font-size 1.4em
-	font-weight bold
-
-input
-	background-color backgroundLight
-	border 0 none
-	border-radius 5px
-	color offWhite
-	padding 5px
-	
-	&::placeholder
-		color offWhite
-
-h1,h2,h3,h4,h5,h6
-	margin 0
-	padding 0
-	text-align center
-
-hr
-	width 90%
-
 #main
 
 	& .inputRow
@@ -44,7 +5,7 @@ hr
 		margin 5px 0
 			
 		& label
-			min-width 135px
+			min-width optionsLabelMinimumWidth
 		
 		& input
 			flex-grow 1
@@ -78,28 +39,3 @@ hr
 				height 41px
 				margin-left 10px
 				z-index 100
-		
-		& #downloads
-			flex(column)
-			
-			& .download
-				border 1px solid backgroundLight
-				border-radius 5px
-				margin 10px 0
-	
-	& .optionsOverlay
-		position fixed
-		left 0
-		top 0
-		width 100%
-		height 100%
-		background-color backgroundDark
-		
-		& .options
-			position fixed
-			left 10%
-			top 50px
-			width 80%
-			
-			& h1
-				margin-bottom 10px
