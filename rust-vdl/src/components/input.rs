@@ -3,6 +3,8 @@
 
 use dioxus::prelude::*;
 
+const DefaultInputClass: &str = "inputRow";
+
 #[inline_props]
 pub fn InputRow<'a>(cx: Scope,
 	value: String, onInput: EventHandler<'a, FormEvent>,
@@ -32,7 +34,14 @@ pub fn InputRow<'a>(cx: Scope,
 		div
 		{
 			class: "{clazz}",
-			input { r#type: "text", title: "{t}", placeholder: "{p}", value: "{value}", oninput: move |evt| onInput.call(evt) }
+			input
+			{
+				r#type: "text",
+				title: "{t}",
+				placeholder: "{p}",
+				value: "{value}",
+				oninput: move |evt| onInput.call(evt)
+			}
 		}
 	});
 }
@@ -45,7 +54,7 @@ pub fn LabelInputRow<'a>(cx: Scope,
 {
 	let c = match class
 	{
-		None => "inputRow".to_string(),
+		None => DefaultInputClass.to_string(),
 		Some(c) => c.into(),
 	};
 	
@@ -67,7 +76,55 @@ pub fn LabelInputRow<'a>(cx: Scope,
 		{
 			class: "{c}",
 			label { r#for: "{name}", "{label}:" }
-			input { r#type: "text", name: "{name}", title: "{t}", placeholder: "{p}", value: "{value}", oninput: move |evt| onInput.call(evt) }
+			input
+			{
+				r#type: "text",
+				id: "{name}",
+				name: "{name}",
+				title: "{t}",
+				placeholder: "{p}",
+				value: "{value}",
+				oninput: move |evt| onInput.call(evt)
+			}
+		}
+	});
+}
+
+#[inline_props]
+pub fn ToggleRow<'a>(cx: Scope,
+	label: String, name: String, value: bool, onInput: EventHandler<'a, FormEvent>,
+	class: Option<String>, title: Option<String>,
+) -> Element<'a>
+{
+	let c = match class
+	{
+		None => DefaultInputClass.to_string(),
+		Some(c) => c.into(),
+	};
+	
+	let t = match title
+	{
+		None => String::default(),
+		Some(t) => t.into(),
+	};
+	
+	return cx.render(rsx!
+	{
+		div
+		{
+			class: "{c}",
+			div { class: "toggleButtonLabel", "{label}:" }
+			input
+			{
+				r#type: "checkbox",
+				id: "{name}", 
+				name: "{name}",
+				checked: "{value}",
+				class: "toggleButtonCheckbox toggleButton",
+				value: "some",
+				oninput: move |evt| onInput.call(evt)
+			}
+			label { r#for: "{name}", title: "{t}" }
 		}
 	});
 }
