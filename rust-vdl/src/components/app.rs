@@ -65,7 +65,10 @@ pub fn App(cx: Scope) -> Element
 							urls.values()
 								.find(|v| **v == videoUrl.to_string())
 								.is_none()
-								.then(|| urls.insert(len, videoUrl.to_string()));
+								.then(|| {
+									urls.insert(len, videoUrl.to_string());
+									videoUrl.set(String::default());
+								});
 						}
 					},
 					
