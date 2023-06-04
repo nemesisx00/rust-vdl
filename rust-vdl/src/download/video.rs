@@ -3,11 +3,14 @@
 
 use std::process::Stdio;
 use futures::StreamExt;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command, ChildStderr, ChildStdout};
 use tokio_util::codec::{FramedRead, LinesCodec};
 
 pub const NoOpHandler: fn(DownloadProgress) = |_| {};
+
+const Regex_VideoTitle: &str = r"\[download\] Destination:.*[\\\/](.*)\..*\..{3}";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DownloadProgress
@@ -17,18 +20,19 @@ pub struct DownloadProgress
 	pub fragmentStatus: String,
 	pub percentComplete: String,
 	pub transferRate: String,
+	pub videoTitle: String,
 }
 
 impl DownloadProgress
 {
 	pub fn isValid(&self) -> bool
 	{
-		return !self.percentComplete.is_empty();
+		return !self.percentComplete.is_empty() || !self.videoTitle.is_empty();
 	}
 	
 	pub fn toString(&self) -> String
 	{
-		return format!("{} {} {} {}", self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
+		return format!("{} {} {} {} {}", self.videoTitle, self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
 	}
 }
 
@@ -241,17 +245,21 @@ pub struct VideoDownloader
 	pub binary: String,
 	pub options: VideoDownloaderOptions,
 	pub child: Option<Child>,
+	titleRegex: Regex,
 }
 
 impl VideoDownloader
 {
 	pub fn new(binary: String, options: VideoDownloaderOptions) -> Self
 	{
+		let regex = Regex::new(Regex_VideoTitle).expect("Failed to compile Video Title regular expression.");
+		
 		return Self
 		{
 			binary: binary.into(),
 			options,
 			child: None,
+			titleRegex: regex,
 		};
 	}
 	
@@ -313,15 +321,27 @@ impl VideoDownloader
 				{
 					if line.starts_with("[download]")
 					{
-						let progress = DownloadProgress::from(line.to_owned());
-						if progress.isValid()
+						let progress = match self.titleRegex.captures(line.as_str())
 						{
-							if cfg!(debug_assertions)
-							{
-								println!("{}", progress);
-							}
-							(handler)(progress);
-						}
+							Some(captures) => {
+								let title = captures.get(1).map_or("", |m| m.as_str());
+								DownloadProgress
+								{
+									videoTitle: title.to_string(),
+									..Default::default()
+								}
+							},
+							None => DownloadProgress::from(line.to_owned()),
+						};
+						
+						progress.isValid()
+							.then(|| {
+								if cfg!(debug_assertions)
+								{
+									println!("{}", progress);
+								}
+								(handler)(progress);
+							});
 					}
 					else
 					{

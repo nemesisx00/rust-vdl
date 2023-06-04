@@ -17,6 +17,7 @@ pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
 	
 	let downloadProcess = use_state(cx, || None);
 	let progress = use_state(cx, || DownloadProgress::default());
+	let title = use_state(cx, || videoUrl.to_owned());
 	
 	let p = progress.clone();
 	let coroutineHandle = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadProgress>| async move
@@ -45,13 +46,18 @@ pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
 		false => "Start",
 	};
 	
+	if !progress.videoTitle.is_empty()
+	{
+		title.set(progress.videoTitle.to_owned());
+	}
+	
 	return cx.render(rsx!
 	{
 		div
 		{
 			class: "download",
 			
-			h3 { "{videoUrl}" }
+			h3 { "{title}" }
 			DownloadProgressBar { progress: progress.get().to_owned() }
 			button
 			{

@@ -2476,6 +2476,7 @@ dependencies = [
  "directories",
  "fermi",
  "futures",
+ "regex",
  "serde",
  "serde_json",
  "tokio",
