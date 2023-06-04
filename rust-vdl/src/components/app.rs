@@ -58,12 +58,15 @@ pub fn App(cx: Scope) -> Element
 				{
 					onclick: move |_|
 					{
-						let len = downloadUrls.read().len();
-						let mut urls = downloadUrls.write();
-						urls.values()
-							.find(|v| **v == videoUrl.to_string())
-							.is_none()
-							.then(|| urls.insert(len, videoUrl.to_string()));
+						if !videoUrl.is_empty()
+						{
+							let len = downloadUrls.read().len();
+							let mut urls = downloadUrls.write();
+							urls.values()
+								.find(|v| **v == videoUrl.to_string())
+								.is_none()
+								.then(|| urls.insert(len, videoUrl.to_string()));
+						}
 					},
 					
 					"Download"
