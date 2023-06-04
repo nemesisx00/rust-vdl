@@ -8,11 +8,13 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dioxus = "0.3.2"
-dioxus-desktop = "0.3.0"
-directories = "5.0.0"
-fermi = "0.3.0"
-futures = "0.3.28"
-serde = "1.0.159"
-serde_json = "1.0.95"
-tokio = "1.27.0"
+dioxus = { git = "https://github.com/DioxusLabs/dioxus" }
+dioxus-desktop = { git = "https://github.com/DioxusLabs/dioxus"}
+directories = "~5"
+fermi = { git = "https://github.com/DioxusLabs/dioxus" }
+futures = "~0"
+serde = "~1"
+serde_json = "~1"
+tokio = { version = "~1", features = ["process"] }
+tokio-stream = { version = "~0" }
+tokio-util = { version = "~0", features = ["codec"] }

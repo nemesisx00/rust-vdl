@@ -1,11 +1,12 @@
 #![allow(non_snake_case, non_upper_case_globals)]
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
-use std::process::{Child, Command, ChildStderr, ChildStdout, Stdio};
-use std::io::{self, BufRead, BufReader};
-use crate::{
-	download::template::OutputTemplateBuilder,
-};
+use std::process::Stdio;
+use std::io::{self};
+use futures::StreamExt;
+use serde::{Deserialize, Serialize};
+use tokio::process::{Child, Command, ChildStderr, ChildStdout};
+use tokio_util::codec::{FramedRead, LinesCodec};
 
 pub const NoOpHandler: fn(DownloadProgress) = |_| {};
 
@@ -68,126 +69,263 @@ unsafe impl Send for DownloadProgress {}
 
 // --------------------------------------------------
 
+const Default_Format: &str = "bv*+ba/b";
+const Default_OutputDirectory: &str = ".";
+const Default_OutputTemplate: &str = "%(upload_date)s - %(title)s.%(ext)s";
+const Option_OutputOnNewLines: &str = "--newline";
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct VideoDownloaderOptions
+{
+	pub ageLimit: i64,
+	pub convertSubs: String,
+	pub convertThumbnails: String,
+	pub downloadPlaylist: bool,
+	pub embedMetadata: bool,
+	pub ffmpegLocation: String,
+	pub format: String,
+	pub formatSort: String,
+	pub limitRate: String,
+	pub output: String,
+	pub outputPath: String,
+	pub preferFreeFormats: bool,
+	pub subFormat: String,
+	pub username: String,
+	pub writeAutoSubs: bool,
+	pub writeSubs: bool,
+	pub writeThumbnail: bool,
+}
+
+impl Default for VideoDownloaderOptions
+{
+	fn default() -> Self
+	{
+		return Self
+		{
+			ageLimit: 0,
+			convertSubs: String::default(),
+			convertThumbnails: String::default(),
+			downloadPlaylist: false,
+			embedMetadata: false,
+			ffmpegLocation: String::default(),
+			format: Default_Format.to_string(),
+			formatSort: String::default(),
+			limitRate: String::default(),
+			output: String::default(),
+			outputPath: String::default(),
+			preferFreeFormats: false,
+			subFormat: String::default(),
+			username: String::default(),
+			writeAutoSubs: false,
+			writeSubs: false,
+			writeThumbnail: false,
+		};
+	}
+}
+
+impl VideoDownloaderOptions
+{
+	pub fn generateArgumentList(&self) -> Vec<String>
+	{
+		let mut args = vec![];
+		
+		if self.ageLimit > 0
+		{
+			args.push("--age-limit".to_string());
+			args.push(self.ageLimit.to_string());
+		}
+		
+		if !self.convertSubs.is_empty()
+		{
+			args.push("--convert-subs".to_string());
+			args.push(self.convertSubs.to_owned());
+		}
+		
+		if !self.convertThumbnails.is_empty()
+		{
+			args.push("--convert-thumbnails".to_string());
+			args.push(self.convertThumbnails.to_owned());
+		}
+		
+		match self.downloadPlaylist
+		{
+			true => args.push("--yes-playlist".to_string()),
+			false => args.push("--no-playlist".to_string()),
+		}
+		
+		match self.embedMetadata
+		{
+			true => args.push("--embed-metadata".to_string()),
+			false => args.push("--no-embed-metadata".to_string()),
+		}
+		
+		if !self.ffmpegLocation.is_empty()
+		{
+			args.push("--ffmpeg-location".to_string());
+			args.push(self.ffmpegLocation.to_owned());
+		}
+		
+		if !self.format.is_empty()
+		{
+			args.push("--format".to_string());
+			args.push(self.format.to_owned());
+		}
+		
+		if !self.formatSort.is_empty()
+		{
+			args.push("--format-sort".to_string());
+			args.push(self.formatSort.to_owned());
+		}
+		
+		if !self.limitRate.is_empty()
+		{
+			args.push("--limit-rate".to_string());
+			args.push(self.limitRate.to_owned());
+		}
+		
+		if !self.output.is_empty()
+		{
+			args.push("--output".to_string());
+			args.push(self.output.to_owned());
+		}
+		
+		if !self.outputPath.is_empty()
+		{
+			args.push("--paths".to_string());
+			args.push(self.outputPath.to_owned());
+		}
+		
+		match self.preferFreeFormats
+		{
+			true => args.push("--prefer-free-formats".to_string()),
+			false => args.push("--no-prefer-free-formats".to_string()),
+		}
+		
+		if !self.subFormat.is_empty()
+		{
+			args.push("--sub-format".to_string());
+			args.push(self.subFormat.to_owned());
+		}
+		
+		if !self.username.is_empty()
+		{
+			args.push("--username".to_string());
+			args.push(self.username.to_owned());
+		}
+		
+		match self.writeAutoSubs
+		{
+			true => args.push("--write-auto-subs".to_string()),
+			false => args.push("--no-write-auto-subs".to_string()),
+		}
+		
+		match self.writeSubs
+		{
+			true => args.push("--write-subs".to_string()),
+			false => args.push("--no-write-subs".to_string()),
+		}
+		
+		match self.writeThumbnail
+		{
+			true => args.push("--write-thumbnail".to_string()),
+			false => args.push("--no-write-thumbnail".to_string()),
+		}
+		
+		return args;
+	}
+}
+
+// --------------------------------------------------
+
 pub struct VideoDownloader
 {
 	pub binary: String,
-	pub formatSort: String,
-	pub formatTemplate: String,
-	pub outputDirectory: String,
-	pub outputTemplate: OutputTemplateBuilder,
-	
-	pub onProgressUpdate: Box<dyn Fn(DownloadProgress)>,
+	pub options: VideoDownloaderOptions,
+	pub child: Option<Child>,
 }
 
 impl VideoDownloader
 {
-	pub fn new(binary: String, outDir: String) -> Self
+	pub fn new(binary: String, options: VideoDownloaderOptions) -> Self
 	{
 		return Self
 		{
 			binary: binary.into(),
-			outputDirectory: outDir.into(),
-			
-			formatTemplate: String::default(),
-			formatSort: String::default(),
-			outputTemplate: OutputTemplateBuilder::default(),
-			
-			onProgressUpdate: Box::new(NoOpHandler),
+			options,
+			child: None,
 		};
 	}
 	
-	pub fn download(&self, video: String)
+	pub async fn cancel(&mut self)
+	{
+		if self.child.is_some()
+		{
+			match self.child.as_mut().unwrap().kill().await
+			{
+				Ok(_) => println!("Canceled child process!"),
+				Err(e) => println!("{}", e),
+			};
+		}
+	}
+	
+	pub async fn download(&mut self, video: String, handler: Box<dyn Fn(DownloadProgress) + Send>)
 	{
 		if !video.is_empty()
 		{
 			let mut args = vec![];
 			
-			if self.formatSort.len() > 0
-			{
-				args.push("-S");
-				args.push(&self.formatSort.as_str());
-			}
-			
-			if !self.formatTemplate.is_empty()
-			{
-				args.push("-f");
-				args.push(self.formatTemplate.as_str());
-			}
-			
-			if !self.outputDirectory.is_empty()
-			{
-				args.push("-P");
-				args.push(self.outputDirectory.as_str());
-			}
-			
-			let ot = self.outputTemplate.get();
-			if !ot.is_empty()
-			{
-				args.push("-o");
-				args.push(ot.as_str());
-			}
+			let generatedArgs = self.options.generateArgumentList();
+			generatedArgs.iter().for_each(|s| args.push(s.as_str()));
 			
 			args.push(video.as_str());
 			
 			let proc = self.spawnCommand(args.as_mut());
 			match proc
 			{
-				Ok(mut child) => self.processOutput(child.stdout.take(), child.stderr.take()),
+				Ok(mut child) => {
+					self.processOutput(handler, child.stdout.take(), child.stderr.take()).await;
+					self.child = Some(child);
+				},
 				Err(e) => println!("Error downloading video: {} -> {}", video, e)
-			};
-		}
-	}
-	
-	pub fn listFormats(&self, video: String)
-	{
-		if !video.is_empty()
-		{
-			let proc = self.spawnCommand(vec!["-F", video.as_str()].as_mut());
-			
-			match proc
-			{
-				Ok(mut child) => self.processOutput(child.stdout.take(), child.stderr.take()),
-				Err(e) => println!("Error getting list of available formats for video: {} -> {}", video, e)
 			};
 		}
 	}
 	
 	fn spawnCommand(&self, args: &mut Vec<&str>) -> io::Result<Child>
 	{
-		let mut finalArgs = vec!["--newline"];
+		let mut finalArgs = vec![Option_OutputOnNewLines.clone()];
 		finalArgs.append(args);
 		
 		return Command::new(self.binary.to_owned())
+			.kill_on_drop(true)
 			.stderr(Stdio::piped())
 			.stdout(Stdio::piped())
 			.args(finalArgs)
 			.spawn();
 	}
 	
-	fn processOutput(&self, stdout: Option<ChildStdout>, stderr: Option<ChildStderr>)
+	async fn processOutput(&self, handler: Box<dyn Fn(DownloadProgress) + Send>, stdout: Option<ChildStdout>, stderr: Option<ChildStderr>)
 	{
 		match stdout
 		{
 			Some(so) => {
-				
-				let reader = BufReader::new(so);
-				reader.lines()
-					.filter_map(|l| l.ok())
-					.for_each(|l| {
-						if l.starts_with("[download]")
+				let mut reader = FramedRead::new(so, LinesCodec::new());
+				while let Some(Ok(line)) = reader.next().await
+				{
+					if line.starts_with("[download]")
+					{
+						let progress = DownloadProgress::from(line.to_owned());
+						if progress.isValid()
 						{
-							let progress = DownloadProgress::from(l.to_owned());
-							if progress.isValid()
-							{
-								println!("{}", progress);
-								(self.onProgressUpdate)(progress);
-							}
+							println!("{}", progress);
+							(handler)(progress);
 						}
-						else
-						{
-							println!("{}", l);
-						}
-					});
+					}
+					else
+					{
+						println!("{}", line);
+					}
+				}
 			},
 			None => println!("No ChildStdout"),
 		};
@@ -195,12 +333,15 @@ impl VideoDownloader
 		match stderr
 		{
 			Some(se) => {
-				let reader = BufReader::new(se);
-				reader.lines()
-					.for_each(|l| match l {
+				let mut reader = FramedRead::new(se, LinesCodec::new());
+				while let Some(line) = reader.next().await
+				{
+					match line
+					{
 						Ok(o) => println!("{}", o),
 						Err(e) => println!("{}", e),
-					});
+					}
+				}
 			},
 			None => println!("No ChildStderr"),
 		}

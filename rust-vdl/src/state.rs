@@ -7,36 +7,24 @@ use fermi::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{Read, Write};
+use crate::download::VideoDownloaderOptions;
 
 const DefaultBinary: &'static str = "yt-dlp";
-const DefaultFormatSort: &'static str = "";
-const DefaultFormatTemplate: &'static str = "bv*+ba/b";
-const DefaultOutputDirectory: &'static str = ".";
-const DefaultOutputTemplate: &'static str = "%(upload_date)s - %(title)s.%(ext)s";
 
 pub static Binary: Atom<String> = |_| DefaultBinary.to_string();
-pub static FormatSort: Atom<String> = |_| DefaultFormatSort.to_string();
-pub static FormatTemplate: Atom<String> = |_| DefaultFormatTemplate.to_string();
-pub static OutputDirectory: Atom<String> = |_| getUserDownloadsDir();
-pub static OutputTemplate: Atom<String> = |_| DefaultOutputTemplate.to_string();
+pub static DownloaderOptions: AtomRef<VideoDownloaderOptions> = |_| VideoDownloaderOptions::default();
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 struct OptionsData
 {
 	pub binary: String,
-	pub formatSort: String,
-	pub formatTemplate: String,
-	pub outputDirectory: String,
-	pub outputTemplate: String,
+	pub downloaderOptions: VideoDownloaderOptions,
 }
 
 pub fn loadOptions(cx: Scope)
 {
 	let setBinary = use_set(cx, Binary);
-	let setFormatSort = use_set(cx, FormatSort);
-	let setFormatTemplate = use_set(cx, FormatTemplate);
-	let setOutputDir = use_set(cx, OutputDirectory);
-	let setOutputTemplate = use_set(cx, OutputTemplate);
+	let downloaderOptions = use_atom_ref(cx, DownloaderOptions);
 	
 	if let Some(path) = getOptionsPath(false)
 	{
@@ -48,10 +36,7 @@ pub fn loadOptions(cx: Scope)
 				if let Ok(data) = serde_json::from_str::<OptionsData>(json.as_str())
 				{
 					setBinary(data.binary);
-					setFormatSort(data.formatSort);
-					setFormatTemplate(data.formatTemplate);
-					setOutputDir(data.outputDirectory);
-					setOutputTemplate(data.outputTemplate);
+					*downloaderOptions.write() = data.downloaderOptions;
 					println!("Options loaded!")
 				}
 			}
@@ -62,18 +47,12 @@ pub fn loadOptions(cx: Scope)
 pub fn saveOptions(cx: Scope)
 {
 	let binary = use_read(cx, Binary);
-	let formatSort = use_read(cx, FormatSort);
-	let formatTemplate = use_read(cx, FormatTemplate);
-	let outputDirectory = use_read(cx, OutputDirectory);
-	let outputTemplate = use_read(cx, OutputTemplate);
+	let downloaderOptions = use_atom_ref(cx, DownloaderOptions);
 	
 	let data = OptionsData
 	{
 		binary: binary.into(),
-		formatSort: formatSort.into(),
-		formatTemplate: formatTemplate.into(),
-		outputDirectory: outputDirectory.into(),
-		outputTemplate: outputTemplate.into(),
+		downloaderOptions: downloaderOptions.read().to_owned(),
 	};
 	
 	if let Some(path) = getOptionsPath(true)
@@ -119,7 +98,7 @@ fn getOptionsPath(create: bool) -> Option<String>
 
 fn getUserDownloadsDir() -> String
 {
-	let mut defaultOutput = DefaultOutputDirectory.to_string();
+	let mut defaultOutput = String::default();
 	if let Some(dirs) = UserDirs::new()
 	{
 		if let Some(dl) = dirs.download_dir()

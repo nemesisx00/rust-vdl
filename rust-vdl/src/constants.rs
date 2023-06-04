@@ -5,7 +5,7 @@ use dioxus_desktop::tao::dpi::LogicalSize;
 
 pub const AppTitle: &'static str = "Rust Video Downloader";
 pub const FileMenuLabel: &'static str = "&File";
-pub const MinimumWindowSize: LogicalSize<u32> = LogicalSize::new(480, 480);
+pub const MinimumWindowSize: LogicalSize<u32> = LogicalSize::new(600, 700);
 
 pub const HtmlMain: &'static str = r#"
 <!DOCTYPE html>

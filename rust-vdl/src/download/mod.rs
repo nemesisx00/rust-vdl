@@ -5,4 +5,4 @@ mod template;
 mod video;
 
 pub use template::{OutputTemplateBuilder, OutputTemplateVariable};
-pub use video::{NoOpHandler, DownloadProgress, VideoDownloader};
+pub use video::{NoOpHandler, DownloadProgress, VideoDownloader, VideoDownloaderOptions};
