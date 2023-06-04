@@ -51,10 +51,11 @@ pub fn DownloadElement(cx: Scope, videoUrl: String) -> Element
 		{
 			class: "download",
 			
-			h1 { "{videoUrl}" }
+			h3 { "{videoUrl}" }
 			DownloadProgressBar { progress: progress.get().to_owned() }
 			button
 			{
+				class: "haltResumeButton",
 				onclick: move |_| {
 					match downloadProcess.get()
 					{
@@ -99,9 +100,23 @@ fn DownloadProgressBar(cx: Scope, progress: DownloadProgress) -> Element
 		{
 			class: "progress",
 			
-			h1 { "{progress.percentComplete}" }
 			progress { max: 100, value: percentNumber, "{percent}" }
-			h3 { "{progress}" }
+			h4 { "{progress.percentComplete}" }
+			
+			if !progress.transferRate.is_empty() || !progress.estimatedSize.is_empty() || !progress.estimatedTime.is_empty()
+			{
+				rsx!
+				{
+					div
+					{
+						class: "progressDetails",
+						
+						h6 { "Transfer Rate: {progress.transferRate}" }
+						h6 { "Estimated Size: {progress.estimatedSize}" }
+						h6 { "Time Remaining: {progress.estimatedTime}" }
+					}
+				}
+			}
 		}
 	});
 }
