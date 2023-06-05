@@ -11,7 +11,6 @@ on:
       - "Dioxus.toml"
       - "package-lock.json"
       - "package.json"
-      - "rust-toolchain.toml"
   pull_request:
     branches: [ "main" ]
     paths:
@@ -22,7 +21,6 @@ on:
       - "Dioxus.toml"
       - "package-lock.json"
       - "package.json"
-      - "rust-toolchain.toml"
   
   workflow_dispatch:
     
@@ -68,7 +66,7 @@ jobs:
     - name: Windows Setup
       if: startsWith(matrix.config.os, 'windows')
       run: |
-        choco install nodejs --force
+        choco install nodejs
         node --version
         npm --version
     

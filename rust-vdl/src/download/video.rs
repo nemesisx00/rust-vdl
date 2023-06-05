@@ -7,7 +7,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command, ChildStderr, ChildStdout};
 use tokio_util::codec::{FramedRead, LinesCodec};
-#[cfg(windows)]
+
+#[cfg(windows)] extern crate winapi;
 use winapi::um::winbase::CREATE_NO_WINDOW;
 
 pub const NoOpHandler: fn(DownloadProgress) = |_| {};
@@ -300,23 +301,33 @@ impl VideoDownloader
 		}
 	}
 	
+	#[cfg(windows)]
 	fn spawnCommand(&self, args: &mut Vec<&str>) -> tokio::io::Result<Child>
 	{
 		let mut finalArgs = vec![Option_OutputOnNewLines.clone()];
 		finalArgs.append(args);
 		
-		let mut cmd = Command::new(self.binary.to_owned());
-		cmd.kill_on_drop(true)
+		return Command::new(self.binary.to_owned())
+			.creation_flags(CREATE_NO_WINDOW)
+			.kill_on_drop(true)
 			.stderr(Stdio::piped())
 			.stdout(Stdio::piped())
-			.args(finalArgs);
+			.args(finalArgs)
+			.spawn();
+	}
+	
+	#[cfg(not(windows))]
+	fn spawnCommand(&self, args: &mut Vec<&str>) -> tokio::io::Result<Child>
+	{
+		let mut finalArgs = vec![Option_OutputOnNewLines.clone()];
+		finalArgs.append(args);
 		
-		if cfg!(windows)
-		{
-			cmd.creation_flags(CREATE_NO_WINDOW);
-		}
-		
-		return cmd.spawn();
+		return Command::new(self.binary.to_owned())
+			.kill_on_drop(true)
+			.stderr(Stdio::piped())
+			.stdout(Stdio::piped())
+			.args(finalArgs)
+			.spawn();
 	}
 	
 	async fn processOutput(&self, handler: Box<dyn Fn(DownloadProgress) + Send>, stdout: Option<ChildStdout>, stderr: Option<ChildStderr>)
