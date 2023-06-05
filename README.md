@@ -15,7 +15,7 @@ and <a href="https://tokio.rs/">Tokio</a>.
 
 ## Installation
 
-This application does not come packaged with [yt-dlp](https://github.com/yt-dlp/yt-dlp) so you will need to install it yourself. You can find everything you need here: [https://github.com/yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp#installation)
+This application does not come packaged with [yt-dlp](https://github.com/yt-dlp/yt-dlp) so you will need to install it yourself. You can find everything you need here: [https://github.com/yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp)
 
 &nbsp;
 
