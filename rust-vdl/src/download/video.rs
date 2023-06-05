@@ -7,6 +7,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command, ChildStderr, ChildStdout};
 use tokio_util::codec::{FramedRead, LinesCodec};
+#[cfg(windows)]
+use winapi::um::winbase::CREATE_NO_WINDOW;
 
 pub const NoOpHandler: fn(DownloadProgress) = |_| {};
 
@@ -311,7 +313,7 @@ impl VideoDownloader
 		
 		if cfg!(windows)
 		{
-			cmd.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+			cmd.creation_flags(CREATE_NO_WINDOW);
 		}
 		
 		return cmd.spawn();
