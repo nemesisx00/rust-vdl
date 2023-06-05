@@ -68,7 +68,7 @@ jobs:
     - name: Windows Setup
       if: startsWith(matrix.config.os, 'windows')
       run: |
-        choco install nodejs
+        choco install nodejs --force
         node --version
         npm --version
     
