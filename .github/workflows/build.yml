@@ -1,0 +1,62 @@
+name: Build rust-vdl
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "**.rs"
+      - "**.styl"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "Dioxus.toml"
+      - "package-lock.json"
+      - "package.json"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "**.rs"
+      - "**.styl"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "Dioxus.toml"
+      - "package-lock.json"
+      - "package.json"
+  
+  workflow_dispatch:
+    
+concurrency:
+  group: ${{github.workflow}}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: ./rust-vdl
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        config:
+          - { name: "MacOS", os: macos-latest }
+          - { name: "Linux", os: ubuntu-latest }
+          - { name: "Windows", os: windows-latest }
+    
+    runs-on: ${{matrix.config.os}}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Rust Toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    
+    - name: Run Cargo Check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --release
+    
+    - name: Build Project
+      run: dioxus build --release
