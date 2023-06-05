@@ -52,5 +52,9 @@ jobs:
         toolchain: stable
         override: true
     
+    - name: Setup Dioxus CLI
+      run: |
+        cargo install dioxus-cli
+    
     - name: Build Project
       run: dioxus build --release
