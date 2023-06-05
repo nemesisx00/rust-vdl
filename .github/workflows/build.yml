@@ -11,6 +11,7 @@ on:
       - "Dioxus.toml"
       - "package-lock.json"
       - "package.json"
+      - "rust-toolchain.toml"
   pull_request:
     branches: [ "main" ]
     paths:
@@ -21,6 +22,7 @@ on:
       - "Dioxus.toml"
       - "package-lock.json"
       - "package.json"
+      - "rust-toolchain.toml"
   
   workflow_dispatch:
     
@@ -45,6 +47,13 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
+    
+    
+    - name: Linux Setup
+      if: startsWith(matrix.config.os, 'ubuntu')
+      run: |
+        sudo apt-get update
+        sudo apt-get install libwebkit2gtk-4.0-dev libgtk-3-dev libappindicator3-dev
     
     - name: Setup Rust Toolchain
       uses: actions-rs/toolchain@v1
