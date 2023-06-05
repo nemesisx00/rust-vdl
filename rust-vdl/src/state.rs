@@ -1,14 +1,14 @@
 #![allow(non_snake_case, non_upper_case_globals)]
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
-use directories::{ProjectDirs, UserDirs};
 use dioxus::prelude::Scope;
 use fermi::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::{Read, Write};
 use crate::download::VideoDownloaderOptions;
+use crate::dir::getOptionsPath;
 
 const DefaultBinary: &'static str = "yt-dlp";
 
@@ -71,46 +71,4 @@ pub fn saveOptions(cx: Scope)
 			}
 		}
 	}
-}
-
-fn getConfigDir(create: bool) -> Option<String>
-{
-	let mut path = None;
-	if let Some(dirs) = ProjectDirs::from("", "", "rust-vdl")
-	{
-		let pathStr = dirs.config_dir().to_str().unwrap().to_string();
-		if create
-		{
-			let _ = fs::create_dir_all(pathStr.clone());
-		}
-		path = Some(pathStr);
-	}
-	
-	return path;
-}
-
-fn getOptionsPath(create: bool) -> Option<String>
-{
-	return match getConfigDir(create)
-	{
-		Some(path) => Some(path.clone() + "\\options.json"),
-		None => None,
-	};
-}
-
-fn getUserDownloadsDir() -> String
-{
-	let mut defaultOutput = String::default();
-	if let Some(dirs) = UserDirs::new()
-	{
-		if let Some(dl) = dirs.download_dir()
-		{
-			if dl.exists() && dl.is_dir()
-			{
-				defaultOutput = dl.to_str().unwrap().to_string();
-			}
-		}
-	}
-	
-	return defaultOutput;
 }

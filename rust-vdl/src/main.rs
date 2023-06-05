@@ -6,6 +6,7 @@
 mod components;
 mod constants;
 mod download;
+mod dir;
 mod hooks;
 mod state;
 

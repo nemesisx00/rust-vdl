@@ -7,10 +7,9 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command, ChildStderr, ChildStdout};
 use tokio_util::codec::{FramedRead, LinesCodec};
+use crate::dir::getUserDownloadsDir;
 
 #[cfg(windows)] extern crate winapi;
-
-pub const NoOpHandler: fn(DownloadProgress) = |_| {};
 
 const Regex_VideoTitle: &str = r"\[download\] Destination:.*[\\\/](.*)\..*\..{3}";
 
@@ -75,7 +74,6 @@ unsafe impl Send for DownloadProgress {}
 // --------------------------------------------------
 
 const Default_Format: &str = "bv*+ba/b";
-const Default_OutputDirectory: &str = ".";
 const Default_OutputTemplate: &str = "%(upload_date)s - %(title)s.%(ext)s";
 const Option_OutputOnNewLines: &str = "--newline";
 
@@ -116,8 +114,8 @@ impl Default for VideoDownloaderOptions
 			format: Default_Format.to_string(),
 			formatSort: String::default(),
 			limitRate: String::default(),
-			output: String::default(),
-			outputPath: String::default(),
+			output: Default_OutputTemplate.to_owned(),
+			outputPath: getUserDownloadsDir(),
 			preferFreeFormats: false,
 			subFormat: String::default(),
 			username: String::default(),
@@ -265,6 +263,7 @@ impl VideoDownloader
 		};
 	}
 	
+	/*
 	pub async fn cancel(&mut self)
 	{
 		if self.child.is_some()
@@ -276,6 +275,7 @@ impl VideoDownloader
 			};
 		}
 	}
+	*/
 	
 	pub async fn download(&mut self, video: String, handler: Box<dyn Fn(DownloadProgress) + Send>)
 	{
