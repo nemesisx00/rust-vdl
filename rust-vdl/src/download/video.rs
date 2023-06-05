@@ -303,12 +303,18 @@ impl VideoDownloader
 		let mut finalArgs = vec![Option_OutputOnNewLines.clone()];
 		finalArgs.append(args);
 		
-		return Command::new(self.binary.to_owned())
-			.kill_on_drop(true)
+		let mut cmd = Command::new(self.binary.to_owned());
+		cmd.kill_on_drop(true)
 			.stderr(Stdio::piped())
 			.stdout(Stdio::piped())
-			.args(finalArgs)
-			.spawn();
+			.args(finalArgs);
+		
+		if cfg!(windows)
+		{
+			cmd.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+		}
+		
+		return cmd.spawn();
 	}
 	
 	async fn processOutput(&self, handler: Box<dyn Fn(DownloadProgress) + Send>, stdout: Option<ChildStdout>, stderr: Option<ChildStderr>)
