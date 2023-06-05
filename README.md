@@ -1,9 +1,9 @@
 <h1 align="center">rust-vdl</h1>
 
 <p align="center">
-A desktop GUI frontend for <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a> written
-in <a href="https://www.rust-lang.org/">Rust</a>, relying on <a href="https://dioxuslabs.com/">Dioxus</a>
-and <a href="https://tokio.rs/">Tokio</a>.
+	A desktop GUI frontend for <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a>
+	written in <a href="https://www.rust-lang.org/">Rust</a>, relying on
+	<a href="https://dioxuslabs.com/">Dioxus</a> and <a href="https://tokio.rs/">Tokio</a>.
 </p>
 
 <div align="center" width="100%">
@@ -15,7 +15,9 @@ and <a href="https://tokio.rs/">Tokio</a>.
 
 ## Installation
 
-This application does not come packaged with [yt-dlp](https://github.com/yt-dlp/yt-dlp) so you will need to install it yourself. You can find everything you need here: [https://github.com/yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp)
+This application does not come packaged with [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+so you will need to install it yourself. You can find everything you need here:
+[https://github.com/yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp)
 
 &nbsp;
 
@@ -29,7 +31,8 @@ This application does not come packaged with [yt-dlp](https://github.com/yt-dlp/
 
 ### Compiling
 
-Once you have the pre-requisites installed and ready to go, compiling rust-vdl is very simple. Navigate to the `rust-vdl` directory and run the following command:
+Once you have the pre-requisites installed and ready to go, compiling rust-vdl
+is very simple. Navigate to the `rust-vdl` directory and run the following command:
 
 ```
 dioxus build --release
