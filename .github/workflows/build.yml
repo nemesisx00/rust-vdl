@@ -52,11 +52,5 @@ jobs:
         toolchain: stable
         override: true
     
-    - name: Run Cargo Check
-      uses: actions-rs/cargo@v1
-      with:
-        command: check
-        args: --release
-    
     - name: Build Project
       run: dioxus build --release
