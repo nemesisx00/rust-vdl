@@ -75,7 +75,6 @@ jobs:
     - name: Setup Rust Toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable
         override: true
     
     - name: Setup Dioxus CLI
