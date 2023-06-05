@@ -9,7 +9,7 @@ This application does not come packaged with [yt-dlp](https://github.com/yt-dlp/
 
 &nbsp;
 
-## Getting Started
+## Development
 
 ### Pre-requisites
 
