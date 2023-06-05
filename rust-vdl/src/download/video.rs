@@ -9,7 +9,6 @@ use tokio::process::{Child, Command, ChildStderr, ChildStdout};
 use tokio_util::codec::{FramedRead, LinesCodec};
 
 #[cfg(windows)] extern crate winapi;
-use winapi::um::winbase::CREATE_NO_WINDOW;
 
 pub const NoOpHandler: fn(DownloadProgress) = |_| {};
 
@@ -308,7 +307,7 @@ impl VideoDownloader
 		finalArgs.append(args);
 		
 		return Command::new(self.binary.to_owned())
-			.creation_flags(CREATE_NO_WINDOW)
+			.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW)
 			.kill_on_drop(true)
 			.stderr(Stdio::piped())
 			.stdout(Stdio::piped())
