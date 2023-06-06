@@ -24,7 +24,15 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 	{
 		while let Some(dp) = recv.next().await
 		{
-			p.set(dp);
+			if dp.downloadStopped
+			{
+				//Update the last progress in order to keep the percent/rate/etc. when it displays as complete
+				p.make_mut().downloadStopped = true;
+			}
+			else
+			{
+				p.set(dp);
+			}
 		}
 	});
 	
@@ -43,10 +51,10 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 	(!progress.videoTitle.is_empty())
 		.then(|| title.set(progress.videoTitle.to_owned()));
 	
-	let btnString = match downloadProcess.is_some()
+	let btnString = match displayRemove.get()
 	{
-		true => "Halt",
-		false => "Start",
+		true => "Start",
+		false => "Halt",
 	};
 	
 	let haltResumeClass = match displayRemove.get()
@@ -54,6 +62,14 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		true => "haltResumeButton",
 		false => "haltResumeButton centerMe",
 	};
+	
+	let removeClass = match progress.downloadStopped
+	{
+		true => "removeButton centerMe",
+		false => "removeButton"
+	};
+	
+	let shouldDisplayRemove = **displayRemove || progress.downloadStopped;
 	
 	return cx.render(rsx!
 	{
@@ -68,40 +84,43 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 			{
 				class: "buttonRow",
 				
-				button
-				{
-					class: "{haltResumeClass}",
-					
-					onclick: move |_| {
-						match downloadProcess.get()
-						{
-							Some(handle) => {
-								handle.abort();
-								downloadProcess.set(None);
-								displayRemove.set(true);
-							},
-							None => {
-								to_owned![videoUrl, binary, coroutineHandle];
-								let dlopts2 = downloaderOptions.read().clone();
-								let handle = tokio::task::spawn(async move {
-									let mut vdl = VideoDownloader::new(binary.into(), dlopts2.to_owned());
-									vdl.download(videoUrl.into(), Box::new(move |dp| coroutineHandle.send(dp))).await;
-								});
-								
-								displayRemove.set(false);
-								downloadProcess.set(Some(handle));
-							},
-						};
-					},
-					
-					"{btnString}"
-				}
-				
-				displayRemove.then(|| rsx!
+				(progress.percentComplete != "100%" && !progress.downloadStopped).then(|| rsx!
 				{
 					button
 					{
-						class: "removeButton",
+						class: "{haltResumeClass}",
+						
+						onclick: move |_| {
+							match downloadProcess.get()
+							{
+								Some(handle) => {
+									handle.abort();
+									downloadProcess.set(None);
+									displayRemove.set(true);
+								},
+								None => {
+									to_owned![videoUrl, binary, coroutineHandle];
+									let dlopts2 = downloaderOptions.read().clone();
+									let handle = tokio::task::spawn(async move {
+										let mut vdl = VideoDownloader::new(binary.into(), dlopts2.to_owned());
+										vdl.download(videoUrl.into(), Box::new(move |dp| coroutineHandle.send(dp))).await;
+									});
+									
+									displayRemove.set(false);
+									downloadProcess.set(Some(handle));
+								},
+							};
+						},
+						
+						"{btnString}"
+					}
+				})
+				
+				shouldDisplayRemove.then(|| rsx!
+				{
+					button
+					{
+						class: "{removeClass}",
 						
 						onclick: move |_| {
 							if let Some(handle) = downloadProcess.get()

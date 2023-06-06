@@ -17,6 +17,7 @@ const Regex_VideoTitle: &str = r"\[download\] Destination:.*[\\\/](.*)\..*\..{3}
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DownloadProgress
 {
+	pub downloadStopped: bool,
 	pub estimatedSize: String,
 	pub estimatedTime: String,
 	pub fragmentStatus: String,
@@ -29,7 +30,7 @@ impl DownloadProgress
 {
 	pub fn isValid(&self) -> bool
 	{
-		return !self.percentComplete.is_empty() || !self.videoTitle.is_empty();
+		return self.downloadStopped || !self.percentComplete.is_empty() || !self.videoTitle.is_empty();
 	}
 	
 	pub fn toString(&self) -> String
@@ -358,6 +359,12 @@ impl VideoDownloader
 								(handler)(progress);
 							});
 					}
+					else if line.starts_with("[Merger]")
+					{
+						let progress = DownloadProgress { downloadStopped: true, ..Default::default() };
+						debug!("Download stopped");
+						(handler)(progress);
+					}
 					else
 					{
 						debug!("{}", line);
@@ -373,13 +380,15 @@ impl VideoDownloader
 				let mut reader = FramedRead::new(se, LinesCodec::new());
 				while let Some(line) = reader.next().await
 				{
-					if cfg!(debug_assertions)
+					match line
 					{
-						match line
-						{
-							Ok(o) => debug!("{}", o),
-							Err(e) => error!("{}", e),
-						}
+						Ok(o) => {
+							debug!("{}", o);
+							let progress = DownloadProgress { downloadStopped: true, ..Default::default() };
+							debug!("Download stopped");
+							(handler)(progress);
+						},
+						Err(e) => error!("{}", e),
 					}
 				}
 			},
