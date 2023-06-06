@@ -13,7 +13,9 @@ dioxus-desktop = { git = "https://github.com/DioxusLabs/dioxus"}
 directories = "~5"
 fermi = { git = "https://github.com/DioxusLabs/dioxus" }
 futures = "~0"
-regex = "~1.8"
+log = "~0"
+log4rs = "~1"
+regex = "~1"
 serde = "~1"
 serde_json = "~1"
 tokio = { version = "~1", features = ["process"] }

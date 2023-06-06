@@ -3,6 +3,7 @@
 
 use std::process::Stdio;
 use futures::StreamExt;
+use log::{debug, error, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command, ChildStderr, ChildStdout};
@@ -263,19 +264,18 @@ impl VideoDownloader
 		};
 	}
 	
-	/*
+	#[allow(dead_code)]
 	pub async fn cancel(&mut self)
 	{
 		if self.child.is_some()
 		{
 			match self.child.as_mut().unwrap().kill().await
 			{
-				Ok(_) => println!("Canceled child process!"),
-				Err(e) => println!("{}", e),
+				Ok(_) => debug!("Canceled child process!"),
+				Err(e) => error!("{}", e),
 			};
 		}
 	}
-	*/
 	
 	pub async fn download(&mut self, video: String, handler: Box<dyn Fn(DownloadProgress) + Send>)
 	{
@@ -295,7 +295,7 @@ impl VideoDownloader
 					self.processOutput(handler, child.stdout.take(), child.stderr.take()).await;
 					self.child = Some(child);
 				},
-				Err(e) => println!("Error downloading video: {} -> {}", video, e)
+				Err(e) => error!("Error downloading video: {} -> {}", video, e)
 			};
 		}
 	}
@@ -354,23 +354,17 @@ impl VideoDownloader
 						
 						progress.isValid()
 							.then(|| {
-								if cfg!(debug_assertions)
-								{
-									println!("{}", progress);
-								}
+								debug!("{}", progress);
 								(handler)(progress);
 							});
 					}
 					else
 					{
-						if cfg!(debug_assertions)
-						{
-							println!("{}", line);
-						}
+						debug!("{}", line);
 					}
 				}
 			},
-			None => println!("No ChildStdout"),
+			None => warn!("No ChildStdout"),
 		};
 		
 		match stderr
@@ -383,13 +377,13 @@ impl VideoDownloader
 					{
 						match line
 						{
-							Ok(o) => println!("{}", o),
-							Err(e) => println!("{}", e),
+							Ok(o) => debug!("{}", o),
+							Err(e) => error!("{}", e),
 						}
 					}
 				}
 			},
-			None => println!("No ChildStderr"),
+			None => warn!("No ChildStderr"),
 		}
 	}
 }

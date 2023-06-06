@@ -3,6 +3,7 @@
 
 use dioxus::prelude::Scope;
 use fermi::prelude::*;
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -39,7 +40,7 @@ pub fn loadOptions(cx: Scope)
 				{
 					setBinary(data.binary);
 					*downloaderOptions.write() = data.downloaderOptions;
-					println!("Options loaded!")
+					debug!("Options loaded!")
 				}
 			}
 		}
@@ -65,8 +66,8 @@ pub fn saveOptions(cx: Scope)
 			{
 				match file.write_all(json.as_bytes())
 				{
-					Ok(_) => println!("Options saved!"),
-					Err(e) => println!("{}", e),
+					Ok(_) => debug!("Options saved!"),
+					Err(e) => error!("{}", e),
 				}
 			}
 		}

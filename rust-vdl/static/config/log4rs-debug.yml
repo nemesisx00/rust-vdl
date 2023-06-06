@@ -1,0 +1,19 @@
+refresh_rate: 30 seconds
+
+appenders:
+  stdout:
+    kind: console
+    encoder:
+      pattern: "{d}: {l} {M} \\(line {L}\\) - {m}{n}"
+  
+  debug:
+    kind: file
+    path: "logs/debug.log"
+    encoder:
+      pattern: "{d}: {l} {M} \\(line {L}\\) - {m}{n}"
+
+root:
+  level: debug
+  appenders:
+    - stdout
+    - debug

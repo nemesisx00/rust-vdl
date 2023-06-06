@@ -14,10 +14,17 @@ use dioxus_desktop::Config;
 use dioxus_desktop::tao::menu::{MenuBar, MenuItem};
 use dioxus_desktop::tao::window::WindowBuilder;
 use crate::components::App;
-use crate::constants::{AppTitle, FileMenuLabel, MinimumWindowSize, HtmlMain};
+use crate::constants::{AppTitle, FileMenuLabel, Log4rsConfigFileName_Debug,
+	Log4rsConfigFileName_Release, MinimumWindowSize, HtmlMain};
 
 fn main()
 {
+	match cfg!(debug_assertions)
+	{
+		true => log4rs::init_file(Log4rsConfigFileName_Debug.to_owned(), Default::default()).unwrap(),
+		false => log4rs::init_file(Log4rsConfigFileName_Release.to_owned(), Default::default()).unwrap(),
+	}
+	
 	dioxus_desktop::launch_cfg(App, mainWindowConfig());
 }
 

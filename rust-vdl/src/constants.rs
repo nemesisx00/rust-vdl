@@ -3,11 +3,13 @@
 
 use dioxus_desktop::tao::dpi::LogicalSize;
 
-pub const AppTitle: &'static str = "Rust Video Downloader";
-pub const FileMenuLabel: &'static str = "&File";
+pub const AppTitle: &str = "Rust Video Downloader";
+pub const FileMenuLabel: &str = "&File";
+pub const Log4rsConfigFileName_Debug: &str = "config/log4rs-debug.yml";
+pub const Log4rsConfigFileName_Release: &str = "config/log4rs.yml";
 pub const MinimumWindowSize: LogicalSize<u32> = LogicalSize::new(500, 500);
 
-pub const HtmlMain: &'static str = r#"
+pub const HtmlMain: &str = r#"
 <!DOCTYPE html>
 <html>
 	<head>
