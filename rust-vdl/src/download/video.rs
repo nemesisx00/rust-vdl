@@ -359,17 +359,15 @@ impl VideoDownloader
 								(handler)(progress);
 							});
 					}
-					else if line.starts_with("[Merger]")
-					{
-						let progress = DownloadProgress { downloadStopped: true, ..Default::default() };
-						debug!("Download stopped");
-						(handler)(progress);
-					}
 					else
 					{
 						debug!("{}", line);
 					}
 				}
+				
+				let progress = DownloadProgress { downloadStopped: true, ..Default::default() };
+				debug!("Download stopped");
+				(handler)(progress);
 			},
 			None => warn!("No ChildStdout"),
 		};
@@ -384,9 +382,11 @@ impl VideoDownloader
 					{
 						Ok(o) => {
 							debug!("{}", o);
+							/*
 							let progress = DownloadProgress { downloadStopped: true, ..Default::default() };
 							debug!("Download stopped");
 							(handler)(progress);
+							*/
 						},
 						Err(e) => error!("{}", e),
 					}
