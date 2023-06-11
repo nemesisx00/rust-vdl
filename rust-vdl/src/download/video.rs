@@ -12,6 +12,7 @@ use crate::dir::getUserDownloadsDir;
 
 #[cfg(windows)] extern crate winapi;
 
+const Regex_VideoFormats: &str = r"\[info\] .*?: Downloading [0-9]+ format\(s\): (.*)";
 const Regex_VideoTitle: &str = r"\[download\] Destination:.*[\\\/](.*)\..*\..{3}";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -20,6 +21,7 @@ pub struct DownloadProgress
 	pub downloadStopped: bool,
 	pub estimatedSize: String,
 	pub estimatedTime: String,
+	pub formatParts: Vec<String>,
 	pub fragmentStatus: String,
 	pub percentComplete: String,
 	pub transferRate: String,
@@ -30,7 +32,10 @@ impl DownloadProgress
 {
 	pub fn isValid(&self) -> bool
 	{
-		return self.downloadStopped || !self.percentComplete.is_empty() || !self.videoTitle.is_empty();
+		return self.downloadStopped
+			|| !self.formatParts.is_empty()
+			|| !self.percentComplete.is_empty()
+			|| !self.videoTitle.is_empty();
 	}
 	
 	pub fn toString(&self) -> String
@@ -247,6 +252,7 @@ pub struct VideoDownloader
 	pub binary: String,
 	pub options: VideoDownloaderOptions,
 	pub child: Option<Child>,
+	formatRegex: Regex,
 	titleRegex: Regex,
 }
 
@@ -254,14 +260,16 @@ impl VideoDownloader
 {
 	pub fn new(binary: String, options: VideoDownloaderOptions) -> Self
 	{
-		let regex = Regex::new(Regex_VideoTitle).expect("Failed to compile Video Title regular expression.");
+		let formatRegex = Regex::new(Regex_VideoFormats).expect("Failed to compile Video Formats regular expression.");
+		let titleRegex = Regex::new(Regex_VideoTitle).expect("Failed to compile Video Title regular expression.");
 		
 		return Self
 		{
 			binary: binary.into(),
 			options,
 			child: None,
-			titleRegex: regex,
+			formatRegex,
+			titleRegex,
 		};
 	}
 	
@@ -358,6 +366,32 @@ impl VideoDownloader
 								debug!("{}", progress);
 								(handler)(progress);
 							});
+					}
+					else if line.starts_with("[info]")
+					{
+						if let Some(captures) = self.formatRegex.captures(line.as_str())
+						{
+							let formatString = captures.get(1).map_or("", |m| m.as_str());
+							let formats: Vec<&str> = formatString.split("+").collect();
+							let mut formatParts = vec![];
+							
+							for f in formats
+							{
+								formatParts.push(f.to_owned());
+							}
+							
+							let progress = DownloadProgress
+							{
+								formatParts,
+								..Default::default()
+							};
+							
+							progress.isValid()
+								.then(|| {
+									debug!("{}", progress);
+									(handler)(progress);
+								});
+						}
 					}
 					else
 					{
