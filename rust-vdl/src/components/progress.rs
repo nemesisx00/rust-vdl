@@ -16,7 +16,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 	
 	let displayRemove = use_state(cx, || false);
 	let downloadProcess = use_state(cx, || None);
-	let progress = use_state(cx, || DownloadProgress::default());
+	let progress = use_ref(cx, || vec![]);
 	let title = use_state(cx, || videoUrl.to_owned());
 	
 	let p = progress.clone();
@@ -24,14 +24,36 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 	{
 		while let Some(dp) = recv.next().await
 		{
-			if dp.downloadStopped
+			let mut list = p.write();
+			
+			if !dp.formatParts.is_empty()
 			{
-				//Update the last progress in order to keep the percent/rate/etc. when it displays as complete
-				p.make_mut().downloadStopped = true;
+				dp.formatParts.iter()
+					.for_each(|_| list.push(DownloadProgress::default()));
 			}
-			else
+			
+			if !dp.subtitleLanguages.is_empty()
 			{
-				p.set(dp);
+				dp.subtitleLanguages.iter()
+					.for_each(|_| list.push(DownloadProgress::default()));
+			}
+			
+			if !list.is_empty()
+			{
+				if let Some(prog) = list.iter_mut().find(|existing| existing.percentComplete != "100%".to_string())
+				{
+					match dp.downloadStopped
+					{
+						//Update the last progress in order to keep the percent/rate/etc. when it displays as complete
+						true => prog.downloadStopped = true,
+						false => prog.update(dp.to_owned()),
+					}
+				}
+				else
+				{
+					list.iter_mut()
+						.for_each(|prog| prog.downloadStopped = true);
+				}
 			}
 		}
 	});
@@ -48,8 +70,12 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		downloadProcess.set(Some(handle));
 	});
 	
-	(!progress.videoTitle.is_empty())
-		.then(|| title.set(progress.videoTitle.to_owned()));
+	if let Some(dpWithTitle) = progress.read().iter().find(|dp| !dp.videoTitle.is_empty())
+	{
+		title.set(dpWithTitle.videoTitle.to_owned());
+	}
+	
+	let downloadHasStopped = progress.read().iter().all(|dp| dp.downloadStopped == true);
 	
 	let btnString = match displayRemove.get()
 	{
@@ -63,13 +89,13 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		false => "haltResumeButton centerMe",
 	};
 	
-	let removeClass = match progress.downloadStopped
+	let removeClass = match downloadHasStopped
 	{
 		true => "removeButton centerMe",
 		false => "removeButton"
 	};
 	
-	let shouldDisplayRemove = **displayRemove || progress.downloadStopped;
+	let shouldDisplayRemove = **displayRemove || downloadHasStopped;
 	
 	return cx.render(rsx!
 	{
@@ -78,13 +104,20 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 			class: "download",
 			
 			h4 { "{title}" }
-			DownloadProgressBar { progress: progress.get().to_owned() }
+			
+			for (i, dp) in progress.read().iter().enumerate()
+			{
+				rsx!
+				{
+					DownloadProgressBar { key: "{i}", progress: dp.to_owned() }
+				}
+			}
 			
 			div
 			{
 				class: "buttonRow",
 				
-				(progress.percentComplete != "100%" && !progress.downloadStopped).then(|| rsx!
+				(!downloadHasStopped).then(|| rsx!
 				{
 					button
 					{
