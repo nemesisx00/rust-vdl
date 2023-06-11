@@ -194,6 +194,17 @@ pub fn Options(cx: Scope) -> Element
 				
 				LabelInputRow
 				{
+					label: "Subtitle Languages".into(),
+					name: "subLangs".into(),
+					value: downloaderOptions.read().subLangs.to_string(),
+					onInput: move |evt: FormEvent| {
+						downloaderOptions.write().subLangs = evt.value.to_owned();
+						saveOptions(cx);
+					}
+				}
+				
+				LabelInputRow
+				{
 					label: "Username".into(),
 					name: "username".into(),
 					value: downloaderOptions.read().username.to_string(),

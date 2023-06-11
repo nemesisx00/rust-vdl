@@ -12,6 +12,7 @@ use crate::dir::getUserDownloadsDir;
 
 #[cfg(windows)] extern crate winapi;
 
+const Regex_SubtitleLanguages: &str = r"\[info\] .*?: Downloading subtitles: (.*)";
 const Regex_VideoFormats: &str = r"\[info\] .*?: Downloading [0-9]+ format\(s\): (.*)";
 const Regex_VideoTitle: &str = r"\[download\] Destination:.*[\\\/](.*)\..*\..{3}";
 
@@ -24,6 +25,7 @@ pub struct DownloadProgress
 	pub formatParts: Vec<String>,
 	pub fragmentStatus: String,
 	pub percentComplete: String,
+	pub subtitleLanguages: Vec<String>,
 	pub transferRate: String,
 	pub videoTitle: String,
 }
@@ -35,12 +37,44 @@ impl DownloadProgress
 		return self.downloadStopped
 			|| !self.formatParts.is_empty()
 			|| !self.percentComplete.is_empty()
-			|| !self.videoTitle.is_empty();
+			|| !self.videoTitle.is_empty()
+			|| !self.subtitleLanguages.is_empty();
 	}
 	
 	pub fn toString(&self) -> String
 	{
-		return format!("{} {} {} {} {} {}", self.videoTitle, self.percentComplete, self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
+		let output;
+		if !self.videoTitle.is_empty()
+		{
+			output = format!("Title: {}", self.videoTitle.to_owned());
+		}
+		else if !self.formatParts.is_empty()
+		{
+			output = format!("Formats to download: {}", self.formatParts.join(", "));
+		}
+		else if !self.subtitleLanguages.is_empty()
+		{
+			output = format!("Subtitles to download: {}", self.subtitleLanguages.join(", "));
+		}
+		else
+		{
+			output = format!("Progress: {} {} {} {} {}", self.percentComplete, self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
+		}
+		
+		return output;
+	}
+	
+	pub fn update(&mut self, instance: Self)
+	{
+		self.downloadStopped = instance.downloadStopped;
+		self.estimatedSize = instance.estimatedSize;
+		self.estimatedTime = instance.estimatedTime;
+		self.formatParts = instance.formatParts;
+		self.fragmentStatus = instance.fragmentStatus;
+		self.percentComplete = instance.percentComplete;
+		self.subtitleLanguages = instance.subtitleLanguages;
+		self.transferRate = instance.transferRate;
+		self.videoTitle = instance.videoTitle;
 	}
 }
 
@@ -100,6 +134,7 @@ pub struct VideoDownloaderOptions
 	pub outputPath: String,
 	pub preferFreeFormats: bool,
 	pub subFormat: String,
+	pub subLangs: String,
 	pub username: String,
 	pub writeAutoSubs: bool,
 	pub writeSubs: bool,
@@ -125,6 +160,7 @@ impl Default for VideoDownloaderOptions
 			outputPath: getUserDownloadsDir(),
 			preferFreeFormats: false,
 			subFormat: String::default(),
+			subLangs: String::default(),
 			username: String::default(),
 			writeAutoSubs: false,
 			writeSubs: false,
@@ -217,6 +253,12 @@ impl VideoDownloaderOptions
 			args.push(self.subFormat.to_owned());
 		}
 		
+		if !self.subLangs.is_empty()
+		{
+			args.push("--sub-langs".to_string());
+			args.push(self.subLangs.to_owned());
+		}
+		
 		if !self.username.is_empty()
 		{
 			args.push("--username".to_string());
@@ -253,6 +295,7 @@ pub struct VideoDownloader
 	pub options: VideoDownloaderOptions,
 	pub child: Option<Child>,
 	formatRegex: Regex,
+	subtitleRegex: Regex,
 	titleRegex: Regex,
 }
 
@@ -261,6 +304,7 @@ impl VideoDownloader
 	pub fn new(binary: String, options: VideoDownloaderOptions) -> Self
 	{
 		let formatRegex = Regex::new(Regex_VideoFormats).expect("Failed to compile Video Formats regular expression.");
+		let subtitleRegex = Regex::new(Regex_SubtitleLanguages).expect("Failed to compile Subtitle Languages regular expression");
 		let titleRegex = Regex::new(Regex_VideoTitle).expect("Failed to compile Video Title regular expression.");
 		
 		return Self
@@ -269,6 +313,7 @@ impl VideoDownloader
 			options,
 			child: None,
 			formatRegex,
+			subtitleRegex,
 			titleRegex,
 		};
 	}
@@ -383,6 +428,29 @@ impl VideoDownloader
 							let progress = DownloadProgress
 							{
 								formatParts,
+								..Default::default()
+							};
+							
+							progress.isValid()
+								.then(|| {
+									debug!("{}", progress);
+									(handler)(progress);
+								});
+						}
+						else if let Some(captures) = self.subtitleRegex.captures(line.as_str())
+						{
+							let subtitlesString = captures.get(1).map_or("", |m| m.as_str());
+							let languageFragments: Vec<&str> = subtitlesString.split(", ").collect();
+							
+							let mut languages = vec![];
+							for lang in languageFragments
+							{
+								languages.push(lang.to_owned());
+							}
+							
+							let progress = DownloadProgress
+							{
+								subtitleLanguages: languages,
 								..Default::default()
 							};
 							
