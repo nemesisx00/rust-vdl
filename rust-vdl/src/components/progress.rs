@@ -20,6 +20,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 	let title = use_state(cx, || videoUrl.to_owned());
 	
 	let p = progress.clone();
+	let dopts = downloaderOptions.clone();
 	let coroutineHandle = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadProgress>| async move
 	{
 		while let Some(dp) = recv.next().await
@@ -32,7 +33,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 					.for_each(|_| list.push(DownloadProgress::default()));
 			}
 			
-			if !dp.subtitleLanguages.is_empty()
+			if dopts.read().writeSubs && !dp.subtitleLanguages.is_empty()
 			{
 				dp.subtitleLanguages.iter()
 					.for_each(|_| list.push(DownloadProgress::default()));
