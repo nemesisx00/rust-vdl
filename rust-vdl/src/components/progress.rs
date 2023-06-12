@@ -19,7 +19,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 	let downloadProcess = use_state(cx, || None);
 	let downloadSubtitles = use_ref(cx, || vec![]);
 	let downloadStopped = use_state(cx, || false);
-	let progress = use_ref(cx, || vec![]);
+	let progressBars = use_ref(cx, || Vec::<(String, DownloadProgress)>::default());
 	let title = use_state(cx, || videoUrl.to_owned());
 	
 	let vt = title.clone();
@@ -60,7 +60,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		}
 	});
 	
-	let dpr = progress.clone();
+	let dpr = progressBars.clone();
 	let df2 = downloadFormats.clone();
 	let ds2 = downloadSubtitles.clone();
 	let progressCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadProgress>| async move
@@ -69,17 +69,19 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		{
 			if dpr.read().is_empty()
 			{
-				let addCount = df2.read().len() + ds2.read().len();
-				if addCount > 0
-				{
-					let mut list = dpr.write();
-					(0..addCount).for_each(|_| list.push(DownloadProgress { ..Default::default() }));
-				}
+				let mut list = dpr.write();
+				ds2.read()
+					.iter()
+					.for_each(|lang| list.push((lang.to_owned(), DownloadProgress::default())));
+				
+				df2.read()
+					.iter()
+					.for_each(|format| list.push((format.to_owned(), DownloadProgress::default())));
 			}
 			
 			if !dpr.read().is_empty()
 			{
-				if let Some(prog) = dpr.write().iter_mut().find(|existing| existing.percentComplete != "100%".to_string())
+				if let Some((_, prog)) = dpr.write().iter_mut().find(|(_, existing)| existing.percentComplete != "100%".to_string())
 				{
 					prog.update(instance.to_owned())
 				}
@@ -87,7 +89,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		}
 	});
 	
-	let dsp = progress.clone();
+	let dsp = progressBars.clone();
 	let dst = downloadStopped.clone();
 	let stoppedCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadStopped>| async move
 	{
@@ -97,7 +99,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 			{
 				dsp.write()
 					.iter_mut()
-					.for_each(|dp| dp.percentComplete = "100%".to_owned());
+					.for_each(|(_, dp)| dp.percentComplete = "100%".to_owned());
 				
 				dst.set(true);
 			}
@@ -154,11 +156,11 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 			
 			h4 { "{title}" }
 			
-			for (i, dp) in progress.read().iter().enumerate()
+			for (i, (dpl, dp)) in progressBars.read().iter().enumerate()
 			{
 				rsx!
 				{
-					DownloadProgressBar { key: "{i}", progress: dp.to_owned() }
+					DownloadProgressBar { key: "{i}", label: dpl.to_owned(), progress: dp.to_owned() }
 				}
 			}
 			
@@ -231,7 +233,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 // --------------------------------------------------
 
 #[inline_props]
-fn DownloadProgressBar(cx: Scope, progress: DownloadProgress) -> Element
+fn DownloadProgressBar(cx: Scope, label: String, progress: DownloadProgress) -> Element
 {
 	let percent = progress.percentComplete.as_str();
 	let percentNumber = match percent.find("%").is_some()
@@ -252,8 +254,14 @@ fn DownloadProgressBar(cx: Scope, progress: DownloadProgress) -> Element
 		{
 			class: "progress",
 			
-			progress { max: 100, value: percentNumber, "{percentDisplay}" }
-			h4 { "{percentDisplay}" }
+			div
+			{
+				class: "barRow",
+				
+				h5 { "{label}" }
+				progress { max: 100, value: percentNumber, "{percentDisplay}" }
+				h5 { "{percentDisplay}" }
+			}
 			
 			(!progress.transferRate.is_empty() || !progress.estimatedSize.is_empty() || !progress.estimatedTime.is_empty()).then(|| rsx!
 			{
