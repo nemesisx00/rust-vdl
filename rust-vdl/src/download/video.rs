@@ -465,10 +465,7 @@ impl VideoDownloader
 							let payload = DownloadProgress::from(line.to_owned());
 							debug!("{}", payload);
 							payload.isValid()
-								.then(|| {
-									debug!("{}", payload);
-									(progressHandler)(payload);
-								});
+								.then(|| (progressHandler)(payload));
 						}
 					}
 					else if line.starts_with("[info]")
