@@ -12,69 +12,105 @@ use crate::dir::getUserDownloadsDir;
 
 #[cfg(windows)] extern crate winapi;
 
-const Regex_SubtitleLanguages: &str = r"\[info\] .*?: Downloading subtitles: (.*)";
-const Regex_VideoFormats: &str = r"\[info\] .*?: Downloading [0-9]+ format\(s\): (.*)";
+const Regex_SubtitleLanguages: &str = r"\[info\].*?: Downloading subtitles: (.*)";
+const Regex_VideoFormats: &str = r"\[info\].*?: Downloading [0-9]+ format\(s\): (.*)";
 const Regex_VideoTitle: &str = r"\[download\] Destination:.*[\\\/](.*)\..*\..{3}";
+
+// --------------------------------------------------
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DownloadStopped
+{
+	pub stopped: bool,
+	pub forceStop: bool,
+}
+
+impl std::fmt::Display for DownloadStopped
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+	{
+		let formatted = format!("Has stopped: {} {}", self.stopped, match self.forceStop { true => "(Forced)", false => "" });
+		return f.write_str(formatted.as_str());
+    }
+}
+
+// --------------------------------------------------
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DownloadTitle
+{
+	pub title: String,
+}
+
+impl std::fmt::Display for DownloadTitle
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+	{
+		let formatted = format!("Title: {}", self.title.to_owned());
+		return f.write_str(formatted.as_str());
+    }
+}
+
+// --------------------------------------------------
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DownloadFormats
+{
+	pub formats: Vec<String>,
+}
+
+impl std::fmt::Display for DownloadFormats
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+	{
+		let formatted = format!("Formats to download: {}", self.formats.join(", "));
+		return f.write_str(formatted.as_str());
+    }
+}
+
+// --------------------------------------------------
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DownloadSubtitles
+{
+	pub languages: Vec<String>,
+}
+
+impl std::fmt::Display for DownloadSubtitles
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+	{
+		let formatted = format!("Subtitles to download: {}", self.languages.join(", "));
+		return f.write_str(formatted.as_str());
+    }
+}
+
+// --------------------------------------------------
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DownloadProgress
 {
-	pub downloadStopped: bool,
 	pub estimatedSize: String,
 	pub estimatedTime: String,
-	pub formatParts: Vec<String>,
 	pub fragmentStatus: String,
 	pub percentComplete: String,
-	pub subtitleLanguages: Vec<String>,
 	pub transferRate: String,
-	pub videoTitle: String,
 }
 
 impl DownloadProgress
 {
 	pub fn isValid(&self) -> bool
 	{
-		return self.downloadStopped
-			|| !self.formatParts.is_empty()
-			|| !self.percentComplete.is_empty()
-			|| !self.videoTitle.is_empty()
-			|| !self.subtitleLanguages.is_empty();
-	}
-	
-	pub fn toString(&self) -> String
-	{
-		let output;
-		if !self.videoTitle.is_empty()
-		{
-			output = format!("Title: {}", self.videoTitle.to_owned());
-		}
-		else if !self.formatParts.is_empty()
-		{
-			output = format!("Formats to download: {}", self.formatParts.join(", "));
-		}
-		else if !self.subtitleLanguages.is_empty()
-		{
-			output = format!("Subtitles to download: {}", self.subtitleLanguages.join(", "));
-		}
-		else
-		{
-			output = format!("Progress: {} {} {} {} {}", self.percentComplete, self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
-		}
-		
-		return output;
+		return !self.percentComplete.is_empty();
 	}
 	
 	pub fn update(&mut self, instance: Self)
 	{
-		self.downloadStopped = instance.downloadStopped;
 		self.estimatedSize = instance.estimatedSize;
 		self.estimatedTime = instance.estimatedTime;
-		self.formatParts = instance.formatParts;
 		self.fragmentStatus = instance.fragmentStatus;
 		self.percentComplete = instance.percentComplete;
-		self.subtitleLanguages = instance.subtitleLanguages;
 		self.transferRate = instance.transferRate;
-		self.videoTitle = instance.videoTitle;
 	}
 }
 
@@ -82,7 +118,8 @@ impl std::fmt::Display for DownloadProgress
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
 	{
-		return f.write_str(self.toString().as_str());
+		let formatted = format!("Progress: {} {} {} {} {}", self.percentComplete, self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
+		return f.write_str(formatted.as_str());
     }
 }
 
@@ -107,7 +144,7 @@ impl From<String> for DownloadProgress
 
 impl Into<String> for DownloadProgress
 {
-	fn into(self) -> String { return self.toString(); }
+	fn into(self) -> String { return format!("{}", self); }
 }
 
 unsafe impl Send for DownloadProgress {}
@@ -331,7 +368,13 @@ impl VideoDownloader
 		}
 	}
 	
-	pub async fn download(&mut self, video: String, handler: Box<dyn Fn(DownloadProgress) + Send>)
+	pub async fn download(&mut self, video: String,
+		formatsHandler: Box<dyn Fn(DownloadFormats) + Send>,
+		progressHandler: Box<dyn Fn(DownloadProgress) + Send>,
+		stoppedHandler: Box<dyn Fn(DownloadStopped) + Send>,
+		subtitlesHandler: Box<dyn Fn(DownloadSubtitles) + Send>,
+		titleHandler: Box<dyn Fn(DownloadTitle) + Send>
+	)
 	{
 		if !video.is_empty()
 		{
@@ -346,7 +389,10 @@ impl VideoDownloader
 			match proc
 			{
 				Ok(mut child) => {
-					self.processOutput(handler, child.stdout.take(), child.stderr.take()).await;
+					self.processOutput(
+						child.stdout.take(), child.stderr.take(),
+						formatsHandler, progressHandler, stoppedHandler, subtitlesHandler, titleHandler
+					).await;
 					self.child = Some(child);
 				},
 				Err(e) => error!("Error downloading video: {} -> {}", video, e)
@@ -383,7 +429,13 @@ impl VideoDownloader
 			.spawn();
 	}
 	
-	async fn processOutput(&self, handler: Box<dyn Fn(DownloadProgress) + Send>, stdout: Option<ChildStdout>, stderr: Option<ChildStderr>)
+	async fn processOutput(&self, stdout: Option<ChildStdout>, stderr: Option<ChildStderr>,
+		formatsHandler: Box<dyn Fn(DownloadFormats) + Send>,
+		progressHandler: Box<dyn Fn(DownloadProgress) + Send>,
+		stoppedHandler: Box<dyn Fn(DownloadStopped) + Send>,
+		subtitlesHandler: Box<dyn Fn(DownloadSubtitles) + Send>,
+		titleHandler: Box<dyn Fn(DownloadTitle) + Send>
+	)
 	{
 		match stdout
 		{
@@ -391,26 +443,33 @@ impl VideoDownloader
 				let mut reader = FramedRead::new(so, LinesCodec::new());
 				while let Some(Ok(line)) = reader.next().await
 				{
+					debug!("{}", line);
+					
 					if line.starts_with("[download]")
 					{
-						let progress = match self.titleRegex.captures(line.as_str())
+						if line.ends_with("has already been downloaded")
 						{
-							Some(captures) => {
-								let title = captures.get(1).map_or("", |m| m.as_str());
-								DownloadProgress
-								{
-									videoTitle: title.to_string(),
-									..Default::default()
-								}
-							},
-							None => DownloadProgress::from(line.to_owned()),
-						};
-						
-						progress.isValid()
-							.then(|| {
-								debug!("{}", progress);
-								(handler)(progress);
-							});
+							let payload = DownloadStopped { forceStop: true, ..Default::default() };
+							debug!("{}", payload);
+							(stoppedHandler)(payload);
+						}
+						else if let Some(captures) = self.titleRegex.captures(line.as_str())
+						{
+							let title = captures.get(1).map_or("", |m| m.as_str());
+							let payload = DownloadTitle { title: title.to_string() };
+							debug!("{}", payload);
+							(titleHandler)(payload);
+						}
+						else
+						{
+							let payload = DownloadProgress::from(line.to_owned());
+							debug!("{}", payload);
+							payload.isValid()
+								.then(|| {
+									debug!("{}", payload);
+									(progressHandler)(payload);
+								});
+						}
 					}
 					else if line.starts_with("[info]")
 					{
@@ -425,17 +484,9 @@ impl VideoDownloader
 								formatParts.push(f.to_owned());
 							}
 							
-							let progress = DownloadProgress
-							{
-								formatParts,
-								..Default::default()
-							};
-							
-							progress.isValid()
-								.then(|| {
-									debug!("{}", progress);
-									(handler)(progress);
-								});
+							let payload = DownloadFormats { formats: formatParts.to_owned() };
+							debug!("{}", payload);
+							(formatsHandler)(payload);
 						}
 						else if let Some(captures) = self.subtitleRegex.captures(line.as_str())
 						{
@@ -448,28 +499,17 @@ impl VideoDownloader
 								languages.push(lang.to_owned());
 							}
 							
-							let progress = DownloadProgress
-							{
-								subtitleLanguages: languages,
-								..Default::default()
-							};
-							
-							progress.isValid()
-								.then(|| {
-									debug!("{}", progress);
-									(handler)(progress);
-								});
+							let payload = DownloadSubtitles { languages: languages.to_owned() };
+							debug!("{}", payload);
+							(subtitlesHandler)(payload);
 						}
-					}
-					else
-					{
-						debug!("{}", line);
 					}
 				}
 				
-				let progress = DownloadProgress { downloadStopped: true, ..Default::default() };
-				debug!("Download stopped");
-				(handler)(progress);
+				let payload = DownloadStopped { stopped: true, ..Default::default() };
+				debug!("Download finished?");
+				debug!("{}", payload);
+				(stoppedHandler)(payload);
 			},
 			None => warn!("No ChildStdout"),
 		};
@@ -482,14 +522,7 @@ impl VideoDownloader
 				{
 					match line
 					{
-						Ok(o) => {
-							debug!("{}", o);
-							/*
-							let progress = DownloadProgress { downloadStopped: true, ..Default::default() };
-							debug!("Download stopped");
-							(handler)(progress);
-							*/
-						},
+						Ok(o) => debug!("{}", o),
 						Err(e) => error!("{}", e),
 					}
 				}

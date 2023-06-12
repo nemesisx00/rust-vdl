@@ -4,7 +4,7 @@
 use dioxus::prelude::*;
 use fermi::{use_atom_ref, use_read};
 use futures::StreamExt;
-use crate::download::{DownloadProgress, VideoDownloader};
+use crate::download::{DownloadFormats, DownloadProgress, DownloadStopped, DownloadSubtitles, DownloadTitle, VideoDownloader};
 use crate::state::{Binary, DownloaderOptions, UrlList};
 
 #[inline_props]
@@ -15,68 +15,116 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 	let urlList = use_atom_ref(cx, UrlList);
 	
 	let displayRemove = use_state(cx, || false);
+	let downloadFormats = use_ref(cx, || vec![]);
 	let downloadProcess = use_state(cx, || None);
+	let downloadSubtitles = use_ref(cx, || vec![]);
+	let downloadStopped = use_state(cx, || false);
 	let progress = use_ref(cx, || vec![]);
 	let title = use_state(cx, || videoUrl.to_owned());
 	
-	let p = progress.clone();
-	let dopts = downloaderOptions.clone();
-	let coroutineHandle = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadProgress>| async move
+	let vt = title.clone();
+	let vu = videoUrl.clone();
+	let titleCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadTitle>| async move
 	{
-		while let Some(dp) = recv.next().await
+		while let Some(instance) = recv.next().await
 		{
-			let mut list = p.write();
-			
-			if !dp.formatParts.is_empty()
+			if vt == vu && !instance.title.is_empty()
 			{
-				dp.formatParts.iter()
-					.for_each(|_| list.push(DownloadProgress::default()));
+				vt.set(instance.title.to_owned());
+			}
+		}
+	});
+	
+	let df = downloadFormats.clone();
+	let formatsCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadFormats>| async move
+	{
+		while let Some(instance) = recv.next().await
+		{
+			if df.read().is_empty()
+			{
+				df.with_mut(|list| list.append(&mut instance.formats.to_owned()));
+			}
+		}
+	});
+	
+	let ds = downloadSubtitles.clone();
+	let dopts = downloaderOptions.clone();
+	let subtitlesCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadSubtitles>| async move
+	{
+		while let Some(instance) = recv.next().await
+		{
+			if dopts.read().writeSubs && ds.read().is_empty()
+			{
+				ds.with_mut(|list| list.append(&mut instance.languages.to_owned()));
+			}
+		}
+	});
+	
+	let dpr = progress.clone();
+	let df2 = downloadFormats.clone();
+	let ds2 = downloadSubtitles.clone();
+	let progressCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadProgress>| async move
+	{
+		while let Some(instance) = recv.next().await
+		{
+			if dpr.read().is_empty()
+			{
+				let addCount = df2.read().len() + ds2.read().len();
+				if addCount > 0
+				{
+					let mut list = dpr.write();
+					(0..addCount).for_each(|_| list.push(DownloadProgress { ..Default::default() }));
+				}
 			}
 			
-			if dopts.read().writeSubs && !dp.subtitleLanguages.is_empty()
+			if !dpr.read().is_empty()
 			{
-				dp.subtitleLanguages.iter()
-					.for_each(|_| list.push(DownloadProgress::default()));
+				if let Some(prog) = dpr.write().iter_mut().find(|existing| existing.percentComplete != "100%".to_string())
+				{
+					prog.update(instance.to_owned())
+				}
 			}
-			
-			if !list.is_empty()
+		}
+	});
+	
+	let dsp = progress.clone();
+	let dst = downloadStopped.clone();
+	let stoppedCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadStopped>| async move
+	{
+		while let Some(instance) = recv.next().await
+		{
+			if instance.forceStop
 			{
-				if let Some(prog) = list.iter_mut().find(|existing| existing.percentComplete != "100%".to_string())
-				{
-					match dp.downloadStopped
-					{
-						//Update the last progress in order to keep the percent/rate/etc. when it displays as complete
-						true => prog.downloadStopped = true,
-						false => prog.update(dp.to_owned()),
-					}
-				}
-				else
-				{
-					list.iter_mut()
-						.for_each(|prog| prog.downloadStopped = true);
-				}
+				dsp.write()
+					.iter_mut()
+					.for_each(|dp| dp.percentComplete = "100%".to_owned());
+				
+				dst.set(true);
+			}
+			else if instance.stopped
+			{
+				dst.set(true);
 			}
 		}
 	});
 	
 	startDownloader(cx, ||
 	{
-		to_owned![binary, videoUrl, coroutineHandle];
+		to_owned![binary, videoUrl, formatsCoroutine, subtitlesCoroutine, progressCoroutine, stoppedCoroutine, titleCoroutine];
 		let dlopts = downloaderOptions.read().clone();
 		let handle = tokio::task::spawn(async move {
 			let mut vdl = VideoDownloader::new(binary.into(), dlopts.to_owned());
-			vdl.download(videoUrl.into(), Box::new(move |dp| coroutineHandle.send(dp))).await;
+			vdl.download(videoUrl.into(),
+				Box::new(move |df| formatsCoroutine.send(df)),
+				Box::new(move |dp| progressCoroutine.send(dp)),
+				Box::new(move |ds| stoppedCoroutine.send(ds)),
+				Box::new(move |ds| subtitlesCoroutine.send(ds)),
+				Box::new(move |dt| titleCoroutine.send(dt))
+			).await;
 		});
 		
 		downloadProcess.set(Some(handle));
 	});
-	
-	if let Some(dpWithTitle) = progress.read().iter().find(|dp| !dp.videoTitle.is_empty())
-	{
-		title.set(dpWithTitle.videoTitle.to_owned());
-	}
-	
-	let downloadHasStopped = progress.read().iter().all(|dp| dp.downloadStopped == true);
 	
 	let btnString = match displayRemove.get()
 	{
@@ -90,13 +138,13 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		false => "haltResumeButton centerMe",
 	};
 	
-	let removeClass = match downloadHasStopped
+	let removeClass = match downloadStopped.get()
 	{
 		true => "removeButton centerMe",
 		false => "removeButton"
 	};
 	
-	let shouldDisplayRemove = **displayRemove || downloadHasStopped;
+	let shouldDisplayRemove = **displayRemove || *downloadStopped.get();
 	
 	return cx.render(rsx!
 	{
@@ -118,7 +166,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 			{
 				class: "buttonRow",
 				
-				(!downloadHasStopped).then(|| rsx!
+				(!downloadStopped).then(|| rsx!
 				{
 					button
 					{
@@ -133,11 +181,17 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 									displayRemove.set(true);
 								},
 								None => {
-									to_owned![videoUrl, binary, coroutineHandle];
+									to_owned![binary, videoUrl, formatsCoroutine, subtitlesCoroutine, progressCoroutine, stoppedCoroutine, titleCoroutine];
 									let dlopts2 = downloaderOptions.read().clone();
 									let handle = tokio::task::spawn(async move {
 										let mut vdl = VideoDownloader::new(binary.into(), dlopts2.to_owned());
-										vdl.download(videoUrl.into(), Box::new(move |dp| coroutineHandle.send(dp))).await;
+										vdl.download(videoUrl.into(),
+											Box::new(move |df| formatsCoroutine.send(df)),
+											Box::new(move |dp| progressCoroutine.send(dp)),
+											Box::new(move |ds| stoppedCoroutine.send(ds)),
+											Box::new(move |ds| subtitlesCoroutine.send(ds)),
+											Box::new(move |dt| titleCoroutine.send(dt))
+										).await;
 									});
 									
 									displayRemove.set(false);
