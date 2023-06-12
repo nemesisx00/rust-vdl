@@ -5,4 +5,5 @@
 mod video;
 
 //pub use template::{OutputTemplateBuilder, OutputTemplateVariable};
-pub use video::{DownloadFormats, DownloadProgress, DownloadStopped, DownloadSubtitles, DownloadTitle, VideoDownloader, VideoDownloaderOptions};
+pub use video::{DownloadFormats, DownloadProgress, DownloadStopped,
+	DownloadSubtitles, DownloadTitle, VideoDownloader, VideoDownloaderOptions};
