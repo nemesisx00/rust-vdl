@@ -443,7 +443,7 @@ impl VideoDownloader
 				let mut reader = FramedRead::new(so, LinesCodec::new());
 				while let Some(Ok(line)) = reader.next().await
 				{
-					debug!("{}", line);
+					trace!("{}", line);
 					
 					if line.starts_with("[download]")
 					{
