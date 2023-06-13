@@ -81,7 +81,16 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 			
 			if !dpr.read().is_empty()
 			{
-				if let Some((_, prog)) = dpr.write().iter_mut().find(|(label, _)| label == &instance.label)
+				//If the final video is being downloaded directly, there is no format or subtitle label in the file name.
+				//But it's the only progress bar, so just update it.
+				if dpr.read().len() == 1
+				{
+					if let Some((_, prog)) = dpr.write().first_mut()
+					{
+						prog.update(instance.to_owned());
+					}
+				}
+				else if let Some((_, prog)) = dpr.write().iter_mut().find(|(label, _)| label == &instance.label)
 				{
 					prog.update(instance.to_owned())
 				}
