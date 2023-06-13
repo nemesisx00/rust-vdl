@@ -128,6 +128,10 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		downloadProcess.set(Some(handle));
 	});
 	
+	let finished = progressBars.read()
+							.iter()
+							.all(|(_, prog)| prog.percentComplete == "100%");
+	
 	let btnString = match displayRemove.get()
 	{
 		true => "Start",
@@ -168,7 +172,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 			{
 				class: "buttonRow",
 				
-				(!downloadStopped).then(|| rsx!
+				(!finished).then(|| rsx!
 				{
 					button
 					{
