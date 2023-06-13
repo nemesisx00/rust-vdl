@@ -81,7 +81,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 			
 			if !dpr.read().is_empty()
 			{
-				if let Some((_, prog)) = dpr.write().iter_mut().find(|(_, existing)| existing.percentComplete != "100%".to_string())
+				if let Some((_, prog)) = dpr.write().iter_mut().find(|(label, _)| label == &instance.label)
 				{
 					prog.update(instance.to_owned())
 				}
@@ -90,15 +90,29 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 	});
 	
 	let dsp = progressBars.clone();
+	let df3 = downloadFormats.clone();
+	let ds3 = downloadSubtitles.clone();
 	let dst = downloadStopped.clone();
 	let stoppedCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadStopped>| async move
 	{
 		while let Some(instance) = recv.next().await
 		{
-			if instance.forceStop
+			if instance.completed
 			{
-				dsp.write()
-					.iter_mut()
+				let mut list = dsp.write();
+				
+				if list.is_empty()
+				{
+					ds3.read()
+						.iter()
+						.for_each(|lang| list.push((lang.to_owned(), DownloadProgress::default())));
+					
+					df3.read()
+						.iter()
+						.for_each(|format| list.push((format.to_owned(), DownloadProgress::default())));
+				}
+				
+				list.iter_mut()
 					.for_each(|(_, dp)| dp.percentComplete = "100%".to_owned());
 				
 				dst.set(true);
