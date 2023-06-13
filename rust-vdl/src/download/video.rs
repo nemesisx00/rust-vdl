@@ -3,7 +3,7 @@
 
 use std::process::Stdio;
 use futures::StreamExt;
-use log::{debug, error, warn};
+use log::{debug, error, trace, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command, ChildStderr, ChildStdout};
