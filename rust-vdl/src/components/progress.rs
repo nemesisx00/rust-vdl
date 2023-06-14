@@ -78,7 +78,8 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 					.iter()
 					.for_each(|format| list.push((format.to_owned(), DownloadProgress::default())));
 			}
-			else
+			
+			if !dpr.read().is_empty()
 			{
 				//If the final video is being downloaded directly, there is no format or subtitle label in the file name.
 				//But it's the only progress bar, so just update it.
