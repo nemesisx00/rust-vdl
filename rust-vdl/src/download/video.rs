@@ -15,7 +15,7 @@ use crate::dir::getUserDownloadsDir;
 const Regex_SubtitleLanguages: &str = r"\[info\].*?: Downloading subtitles: (.*)";
 const Regex_VideoFormats: &str = r"\[info\].*?: Downloading [0-9]+ format\(s\): (.*)";
 const Regex_VideoFormatWithNumbers: &str = r"f([0-9]+)";
-const Regex_VideoTitle: &str = r"\[download\] Destination:.*[\\\/](.*)(?:\.(.*))?\..{3,4}";
+const Regex_VideoTitle: &str = r"\[download\] Destination:.*[\\\/](.*)\.(.*)\..{3,4}";
 const Regex_VideoTitleCompleted: &str = r"\[download\] (.*?)(?:\.(.*))?\..{3,4} has already been downloaded";
 
 // --------------------------------------------------
