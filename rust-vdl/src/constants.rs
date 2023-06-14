@@ -5,6 +5,7 @@ use dioxus_desktop::tao::dpi::LogicalSize;
 
 pub const AppTitle: &str = "Rust Video Downloader";
 pub const FileMenuLabel: &str = "&File";
+pub const HelpMenuLabel: &str = "&Help";
 pub const Log4rsConfigFileName_Debug: &str = "config/log4rs-debug.yml";
 pub const Log4rsConfigFileName_Release: &str = "config/log4rs.yml";
 pub const MinimumWindowSize: LogicalSize<u32> = LogicalSize::new(500, 500);

@@ -11,11 +11,12 @@ mod hooks;
 mod state;
 
 use dioxus_desktop::Config;
-use dioxus_desktop::tao::menu::{MenuBar, MenuItem};
+use dioxus_desktop::tao::menu::{MenuBar, MenuItem, MenuItemAttributes};
 use dioxus_desktop::tao::window::WindowBuilder;
 use crate::components::App;
-use crate::constants::{AppTitle, FileMenuLabel, Log4rsConfigFileName_Debug,
-	Log4rsConfigFileName_Release, MinimumWindowSize, HtmlMain};
+use crate::constants::{AppTitle, FileMenuLabel, HelpMenuLabel,
+	Log4rsConfigFileName_Debug, Log4rsConfigFileName_Release,
+	MinimumWindowSize, HtmlMain};
 
 fn main()
 {
@@ -34,11 +35,13 @@ fn mainWindowConfig() -> Config
 		.with_inner_size(MinimumWindowSize)
 		.with_menu(mainMenu())
 		.with_min_inner_size(MinimumWindowSize)
-		.with_title(AppTitle);
+		.with_title(AppTitle.to_owned());
 	
-	return Config::new()
+	let config = Config::new()
 		.with_custom_index(HtmlMain.into())
 		.with_window(win);
+	
+	return config;
 }
 
 fn mainMenu() -> MenuBar
@@ -46,8 +49,13 @@ fn mainMenu() -> MenuBar
 	let mut fileMenu = MenuBar::new();
 	fileMenu.add_native_item(MenuItem::Quit);
 	
+	let mut helpMenu = MenuBar::new();
+	//TODO: Figure out how to set up custom event handler for menu items
+	helpMenu.add_item(MenuItemAttributes::new("&About").with_enabled(false));
+	
 	let mut mainMenu = MenuBar::new();
 	mainMenu.add_submenu(FileMenuLabel, true, fileMenu);
+	mainMenu.add_submenu(HelpMenuLabel, true, helpMenu);
 	
 	return mainMenu;
 }
