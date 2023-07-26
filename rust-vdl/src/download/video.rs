@@ -1,10 +1,10 @@
 #![allow(non_snake_case, non_upper_case_globals)]
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
-use std::process::Stdio;
+use std::{process::Stdio};
 use futures::StreamExt;
 use log::{debug, error, trace, warn};
-use regex::Regex;
+use fancy_regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
 use tokio::process::{Child, Command, ChildStderr, ChildStdout};
 use tokio_util::codec::{FramedRead, LinesCodec};
@@ -12,26 +12,108 @@ use crate::dir::getUserDownloadsDir;
 
 #[cfg(windows)] extern crate winapi;
 
-const Regex_SubtitleLanguages: &str = r"\[info\].*?: Downloading subtitles: (.*)";
-const Regex_VideoFormats: &str = r"\[info\].*?: Downloading [0-9]+ format\(s\): (.*)";
-const Regex_VideoFormatWithNumbers: &str = r"f([0-9]+)";
-const Regex_VideoTitle: &str = r"\[download\] Destination:.*[\\\/](.*)\.(.*)\..{3,4}";
-const Regex_VideoTitleCompleted: &str = r"\[download\] (.*?)(?:\.(.*))?\..{3,4} has already been downloaded";
+const Regex_DownloadPlaylistCount: &str = r"\[download\] Downloading item (\d+) of (\d+)";
+const Regex_DownloadTitle: &str = r"\[download\] Destination: (?:.*[\\\/])?(.*)\..{3,4}";
+const Regex_InfoFormats: &str = r"\[info\].*: Downloading \d+ format\(s\): (.+)";
+const Regex_InfoSubtitles: &str = r"\[info\].*: Downloading subtitles: (.+)";
+//const Regex_VideoTitle: &str = r"\[download\] Destination: (?:.*[\\\/])?(.*)(?:\.(.*))(?=\..{3,4})\..{3,4}";
+
+const Separator_PartFormat: &str = "+";
+const Separator_Subtitle: &str = ", ";
+
+// --------------------------------------------------
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DownloadProgress
+{
+	pub size: String,
+	pub time: String,
+	pub fragmentStatus: String,
+	pub label: String,
+	pub percentComplete: String,
+	pub transferRate: String,
+}
+
+impl DownloadProgress
+{
+	pub fn update(&mut self, instance: Self)
+	{
+		self.size = instance.size.to_owned();
+		self.time = instance.time.to_owned();
+		self.fragmentStatus = instance.fragmentStatus.to_owned();
+		self.label = instance.label.to_owned();
+		self.percentComplete = instance.percentComplete.to_owned();
+		self.transferRate = instance.transferRate.to_owned();
+	}
+}
+
+impl std::fmt::Display for DownloadProgress
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+	{
+		let formatted = format!("Progress {}: {} {} {} {} {}", self.label, self.percentComplete, self.transferRate, self.size, self.time, self.fragmentStatus);
+		return f.write_str(formatted.as_str());
+    }
+}
+
+impl From<String> for DownloadProgress
+{
+	fn from(value: String) -> Self
+	{
+		let mut instance = Self::default();
+		
+		value.split_whitespace()
+			.for_each(|w| {
+				w.ends_with("%").then(|| instance.percentComplete = w.to_owned());
+				w.ends_with("B").then(|| instance.size = w.to_owned());
+				w.ends_with("B/s").then(|| instance.transferRate = w.to_owned());
+				w.find(":").is_some().then(|| instance.time = w.to_owned());
+				w.ends_with(")").then(|| instance.fragmentStatus = w[..w.len()-1].to_owned());
+			});
+		
+		return instance;
+	}
+}
+
+impl Into<String> for DownloadProgress
+{
+	fn into(self) -> String { return format!("{}", self); }
+}
+
+unsafe impl Send for DownloadProgress {}
+
+// --------------------------------------------------
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct DownloadReset
+{
+	pub label: String,
+	pub playlistCurrent: usize,
+	pub playlistMax: usize,
+}
+
+impl std::fmt::Display for DownloadReset
+{
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
+	{
+		let formatted = format!("Resetting download progress for part {} of {} - '{}'", self.playlistCurrent, self.playlistMax, self.label);
+		return f.write_str(formatted.as_str());
+	}
+}
 
 // --------------------------------------------------
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DownloadStopped
 {
-	pub stopped: bool,
-	pub completed: bool,
+	pub label: String,
 }
 
 impl std::fmt::Display for DownloadStopped
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
 	{
-		let formatted = format!("Has stopped: {} | Is completed: {}", self.stopped, self.completed);
+		let formatted = format!("Download has stopped: '{}'", self.label);
 		return f.write_str(formatted.as_str());
     }
 }
@@ -52,106 +134,6 @@ impl std::fmt::Display for DownloadTitle
 		return f.write_str(formatted.as_str());
     }
 }
-
-// --------------------------------------------------
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct DownloadFormats
-{
-	pub formats: Vec<String>,
-}
-
-impl std::fmt::Display for DownloadFormats
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-	{
-		let formatted = format!("Formats to download: {}", self.formats.join(", "));
-		return f.write_str(formatted.as_str());
-    }
-}
-
-// --------------------------------------------------
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct DownloadSubtitles
-{
-	pub languages: Vec<String>,
-}
-
-impl std::fmt::Display for DownloadSubtitles
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-	{
-		let formatted = format!("Subtitles to download: {}", self.languages.join(", "));
-		return f.write_str(formatted.as_str());
-    }
-}
-
-// --------------------------------------------------
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct DownloadProgress
-{
-	pub estimatedSize: String,
-	pub estimatedTime: String,
-	pub fragmentStatus: String,
-	pub label: String,
-	pub percentComplete: String,
-	pub transferRate: String,
-}
-
-impl DownloadProgress
-{
-	pub fn isValid(&self) -> bool
-	{
-		return !self.percentComplete.is_empty();
-	}
-	
-	pub fn update(&mut self, instance: Self)
-	{
-		self.estimatedSize = instance.estimatedSize.to_owned();
-		self.estimatedTime = instance.estimatedTime.to_owned();
-		self.fragmentStatus = instance.fragmentStatus.to_owned();
-		self.label = instance.label.to_owned();
-		self.percentComplete = instance.percentComplete.to_owned();
-		self.transferRate = instance.transferRate.to_owned();
-	}
-}
-
-impl std::fmt::Display for DownloadProgress
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-	{
-		let formatted = format!("Progress {}: {} {} {} {} {}", self.label, self.percentComplete, self.transferRate, self.estimatedSize, self.estimatedTime, self.fragmentStatus);
-		return f.write_str(formatted.as_str());
-    }
-}
-
-impl From<String> for DownloadProgress
-{
-	fn from(value: String) -> Self
-	{
-		let mut instance = Self::default();
-		
-		value.split_whitespace()
-			.for_each(|w| {
-				w.ends_with("%").then(|| instance.percentComplete = w.to_owned());
-				w.ends_with("B").then(|| instance.estimatedSize = w.to_owned());
-				w.ends_with("B/s").then(|| instance.transferRate = w.to_owned());
-				w.find(":").is_some().then(|| instance.estimatedTime = w.to_owned());
-				w.ends_with(")").then(|| instance.fragmentStatus = w[..w.len()-1].to_owned());
-			});
-		
-		return instance;
-	}
-}
-
-impl Into<String> for DownloadProgress
-{
-	fn into(self) -> String { return format!("{}", self); }
-}
-
-unsafe impl Send for DownloadProgress {}
 
 // --------------------------------------------------
 
@@ -336,22 +318,24 @@ pub struct VideoDownloader
 	pub options: VideoDownloaderOptions,
 	pub child: Option<Child>,
 	currentDownloadLabel: String,
-	formatRegex: Regex,
-	formatNumbersRegex: Regex,
-	subtitleRegex: Regex,
-	titleRegex: Regex,
-	titleCompletedRegex: Regex,
+	partLabels: Vec<String>,
+	playlistCurrent: usize,
+	playlistMax: usize,
+	
+	regexInfoFormats: Regex,
+	regexInfoSubtitles: Regex,
+	regexDownloadPlaylistCount: Regex,
+	regexDownloadTitle: Regex,
 }
 
 impl VideoDownloader
 {
 	pub fn new(binary: String, options: VideoDownloaderOptions) -> Self
 	{
-		let formatRegex = Regex::new(Regex_VideoFormats).expect("Failed to compile Video Formats regular expression.");
-		let formatNumbersRegex = Regex::new(Regex_VideoFormatWithNumbers).expect("Failed to compile Video Formats With Numbers regular expression");
-		let subtitleRegex = Regex::new(Regex_SubtitleLanguages).expect("Failed to compile Subtitle Languages regular expression");
-		let titleRegex = Regex::new(Regex_VideoTitle).expect("Failed to compile Video Title regular expression.");
-		let titleCompletedRegex = Regex::new(Regex_VideoTitleCompleted).expect("Failed to compile Video Title Completed regular expression.");
+		let regexInfoFormats = Regex::new(Regex_InfoFormats).expect("Failed to compile Info Formats regular expression");
+		let regexInfoSubtitles = Regex::new(Regex_InfoSubtitles).expect("Failed to compile Info Subtitles regular expression");
+		let regexDownloadPlaylistCount = Regex::new(Regex_DownloadPlaylistCount).expect("Failed to compile Download Playlist Count regular expression.");
+		let regexDownloadTitle = Regex::new(Regex_DownloadTitle).expect("Failed to compile Download Title regular expression.");
 		
 		return Self
 		{
@@ -359,11 +343,13 @@ impl VideoDownloader
 			options,
 			child: None,
 			currentDownloadLabel: String::default(),
-			formatRegex,
-			formatNumbersRegex,
-			subtitleRegex,
-			titleRegex,
-			titleCompletedRegex,
+			partLabels: Vec::<String>::default(),
+			playlistCurrent: 0,
+			playlistMax: 0,
+			regexInfoFormats,
+			regexInfoSubtitles,
+			regexDownloadPlaylistCount,
+			regexDownloadTitle,
 		};
 	}
 	
@@ -381,10 +367,9 @@ impl VideoDownloader
 	}
 	
 	pub async fn download(&mut self, video: String,
-		formatsHandler: Box<dyn Fn(DownloadFormats) + Send>,
 		progressHandler: Box<dyn Fn(DownloadProgress) + Send>,
+		resetHandler: Box<dyn Fn(DownloadReset) + Send>,
 		stoppedHandler: Box<dyn Fn(DownloadStopped) + Send>,
-		subtitlesHandler: Box<dyn Fn(DownloadSubtitles) + Send>,
 		titleHandler: Box<dyn Fn(DownloadTitle) + Send>
 	)
 	{
@@ -403,13 +388,185 @@ impl VideoDownloader
 				Ok(mut child) => {
 					self.processOutput(
 						child.stdout.take(), child.stderr.take(),
-						formatsHandler, progressHandler, stoppedHandler, subtitlesHandler, titleHandler
+						progressHandler, resetHandler, stoppedHandler, titleHandler
 					).await;
 					self.child = Some(child);
 				},
 				Err(e) => error!("Error downloading video: {} -> {}", video, e)
 			};
 		}
+	}
+	
+	fn parseTitle(&self, fullTitle: String) -> (String, String)
+	{
+		let mut title = String::default();
+		let mut partLabel = String::default();
+		
+		//Detect which part label is at the end of this full title string
+		if let Some(foundLabel) = self.partLabels.iter().find(|label| fullTitle.ends_with(format!("{}", label).as_str()))
+		{
+			partLabel = foundLabel.to_owned();
+			
+			//Slice out the actual title, without the part label
+			if let Some(endIndex) = fullTitle.find(format!(".{}", partLabel).as_str())
+			{
+				title = fullTitle[..endIndex].to_string();
+			}
+			else if let Some(endIndex) = fullTitle.find(format!(".f{}", partLabel).as_str())
+			{
+				title = fullTitle[..endIndex].to_string();
+			}
+		}
+		
+		return (title, partLabel);
+	}
+	
+	async fn processOutput(&mut self, stdout: Option<ChildStdout>, stderr: Option<ChildStderr>,
+		progressHandler: Box<dyn Fn(DownloadProgress) + Send>,
+		resetHandler: Box<dyn Fn(DownloadReset) + Send>,
+		stoppedHandler: Box<dyn Fn(DownloadStopped) + Send>,
+		titleHandler: Box<dyn Fn(DownloadTitle) + Send>
+	)
+	{
+		match stdout
+		{
+			Some(so) => {
+				let mut reader = FramedRead::new(so, LinesCodec::new());
+				while let Some(opt) = reader.next().await
+				{
+					match opt
+					{
+						Ok(line) => {
+							trace!("{}", line);
+							
+							if line.starts_with("[download]")
+							{
+								if let Ok(Some(captures)) = self.regexDownloadPlaylistCount.captures(line.as_str())
+								{
+									self.processOutput_playlistCount(captures, &resetHandler);
+								}
+								else if let Ok(Some(captures)) = self.regexDownloadTitle.captures(line.as_str())
+								{
+									self.processOutput_title(captures, &titleHandler);
+								}
+								else
+								{
+									self.processOutput_downloadProgress(line.to_owned(), &progressHandler);
+								}
+							}
+							else if line.starts_with("[info]")
+							{
+								if let Ok(Some(captures)) = self.regexInfoFormats.captures(line.as_str())
+								{
+									self.processOutput_infoFormats(captures);
+								}
+								else if let Ok(Some(captures)) = self.regexInfoSubtitles.captures(line.as_str())
+								{
+									self.processOutput_infoSubtitles(captures);
+								}
+							}
+						},
+						
+						Err(e) => error!("{}", e),
+					}
+				}
+				
+				self.processOutput_downloadStopped(&stoppedHandler);
+			},
+			None => warn!("No ChildStdout"),
+		};
+		
+		match stderr
+		{
+			Some(se) => {
+				let mut reader = FramedRead::new(se, LinesCodec::new());
+				while let Some(line) = reader.next().await
+				{
+					match line
+					{
+						Ok(o) => error!("{}", o),
+						Err(e) => error!("{}", e),
+					}
+				}
+			},
+			None => warn!("No ChildStderr"),
+		}
+	}
+	
+	fn processOutput_downloadProgress(&self, line: String, handler: &Box<dyn Fn(DownloadProgress) + Send>)
+	{
+		let mut payload = DownloadProgress::from(line.to_owned());
+		if !payload.percentComplete.is_empty() || (!payload.size.is_empty() && !payload.time.is_empty() && !payload.transferRate.is_empty())
+		{
+			payload.label = self.currentDownloadLabel.to_owned();
+			debug!("{}", payload);
+			(handler)(payload);
+		}
+	}
+	
+	fn processOutput_downloadStopped(&self, handler: &Box<dyn Fn(DownloadStopped) + Send>)
+	{
+		let payload = DownloadStopped { label: self.currentDownloadLabel.to_owned(), ..Default::default() };
+		debug!("{}", payload);
+		(handler)(payload);
+	}
+	
+	fn processOutput_infoFormats(&mut self, captures: Captures)
+	{
+		let m = captures.get(1).map_or(String::default(), |m| m.as_str().to_string());
+		if !m.is_empty()
+		{
+			m.split(Separator_PartFormat)
+				.for_each(|label| self.partLabels.push(label.to_owned()));
+		}
+	}
+	
+	fn processOutput_infoSubtitles(&mut self, captures: Captures)
+	{
+		let m = captures.get(1).map_or(String::default(), |m| m.as_str().to_string());
+		if !m.is_empty()
+		{
+			m.split(Separator_Subtitle)
+				.for_each(|label| self.partLabels.push(label.to_owned()));
+		}
+	}
+	
+	fn processOutput_playlistCount(&mut self, captures: Captures, handler: &Box<dyn Fn(DownloadReset) + Send>)
+	{
+		let firstMatch = captures.get(1).map_or(String::default(), |m| m.as_str().to_string());
+		if let Ok(current) = firstMatch.parse::<usize>()
+		{
+			self.playlistCurrent = current;
+		}
+		
+		let secondMatch = captures.get(2).map_or(String::default(), |m| m.as_str().to_string());
+		if let Ok(max) = secondMatch.parse::<usize>()
+		{
+			self.playlistMax = max;
+		}
+		
+		self.partLabels.clear();
+		
+		let payload = DownloadReset
+		{
+			label: self.currentDownloadLabel.to_owned(),
+			playlistCurrent: self.playlistCurrent,
+			playlistMax: self.playlistMax
+		};
+		debug!("{}", payload);
+		(handler)(payload);
+	}
+	
+	fn processOutput_title(&mut self, captures: Captures, handler: &Box<dyn Fn(DownloadTitle) + Send>)
+	{
+		let fullTitle = captures.get(1).map_or(String::default(), |m| m.as_str().to_string());
+		let (title, partLabel) = self.parseTitle(fullTitle);
+		
+		self.updateCurrentDownloadLabel(partLabel.to_owned());
+		
+		let payload = DownloadTitle { title: title.to_owned() };
+		debug!("{}", payload);
+		(handler)(payload);
 	}
 	
 	#[cfg(windows)]
@@ -441,140 +598,22 @@ impl VideoDownloader
 			.spawn();
 	}
 	
-	async fn processOutput(&mut self, stdout: Option<ChildStdout>, stderr: Option<ChildStderr>,
-		formatsHandler: Box<dyn Fn(DownloadFormats) + Send>,
-		progressHandler: Box<dyn Fn(DownloadProgress) + Send>,
-		stoppedHandler: Box<dyn Fn(DownloadStopped) + Send>,
-		subtitlesHandler: Box<dyn Fn(DownloadSubtitles) + Send>,
-		titleHandler: Box<dyn Fn(DownloadTitle) + Send>
-	)
+	fn updateCurrentDownloadLabel(&mut self, label: String)
 	{
-		match stdout
+		if !label.is_empty()
 		{
-			Some(so) => {
-				let mut reader = FramedRead::new(so, LinesCodec::new());
-				while let Some(Ok(line)) = reader.next().await
-				{
-					trace!("{}", line);
-					
-					if line.starts_with("[download]")
-					{
-						if let Some(captures) = self.titleCompletedRegex.captures(line.as_str())
-						{
-							let mut downloadLabel = captures.get(2).map_or("", |m| m.as_str());
-							if let Some(caps) = self.formatNumbersRegex.captures(downloadLabel)
-							{
-								let modified = caps.get(1).map_or("", |m2| m2.as_str());
-								if modified.len() > 0
-								{
-									downloadLabel = modified;
-								}
-							}
-							
-							if downloadLabel.len() > 0
-							{
-								self.currentDownloadLabel = downloadLabel.to_string();
-								
-								let mut payload = DownloadProgress::default();
-								payload.label = self.currentDownloadLabel.to_owned();
-								payload.percentComplete = "100%".to_string();
-								
-								debug!("{}", payload);
-								payload.isValid()
-									.then(|| (progressHandler)(payload));
-							}
-							else
-							{
-								let payload = DownloadStopped { stopped: true, completed: true };
-								debug!("{}", payload);
-								(stoppedHandler)(payload);
-							}
-						}
-						else if let Some(captures) = self.titleRegex.captures(line.as_str())
-						{
-							let mut downloadLabel = captures.get(2).map_or("", |m| m.as_str());
-							if let Some(caps) = self.formatNumbersRegex.captures(downloadLabel)
-							{
-								let modified = caps.get(1).map_or("", |m2| m2.as_str());
-								if modified.len() > 0
-								{
-									downloadLabel = modified;
-								}
-							}
-							
-							self.currentDownloadLabel = downloadLabel.to_string();
-							
-							let title = captures.get(1).map_or("", |m| m.as_str());
-							let payload = DownloadTitle { title: title.to_string() };
-							debug!("{}", payload);
-							(titleHandler)(payload);
-						}
-						else
-						{
-							let mut payload = DownloadProgress::from(line.to_owned());
-							payload.label = self.currentDownloadLabel.to_owned();
-							
-							debug!("{}", payload);
-							payload.isValid()
-								.then(|| (progressHandler)(payload));
-						}
-					}
-					else if line.starts_with("[info]")
-					{
-						if let Some(captures) = self.formatRegex.captures(line.as_str())
-						{
-							let formatString = captures.get(1).map_or("", |m| m.as_str());
-							let formats: Vec<&str> = formatString.split("+").collect();
-							let mut formatParts = vec![];
-							
-							for f in formats
-							{
-								formatParts.push(f.to_owned());
-							}
-							
-							let payload = DownloadFormats { formats: formatParts.to_owned() };
-							debug!("{}", payload);
-							(formatsHandler)(payload);
-						}
-						else if let Some(captures) = self.subtitleRegex.captures(line.as_str())
-						{
-							let subtitlesString = captures.get(1).map_or("", |m| m.as_str());
-							let languageFragments: Vec<&str> = subtitlesString.split(", ").collect();
-							
-							let mut languages = vec![];
-							for lang in languageFragments
-							{
-								languages.push(lang.to_owned());
-							}
-							
-							let payload = DownloadSubtitles { languages: languages.to_owned() };
-							debug!("{}", payload);
-							(subtitlesHandler)(payload);
-						}
-					}
-				}
-				
-				let payload = DownloadStopped { stopped: true, ..Default::default() };
-				debug!("{}", payload);
-				(stoppedHandler)(payload);
-			},
-			None => warn!("No ChildStdout"),
-		};
-		
-		match stderr
+			self.currentDownloadLabel = label.to_string();
+		}
+		else
 		{
-			Some(se) => {
-				let mut reader = FramedRead::new(se, LinesCodec::new());
-				while let Some(line) = reader.next().await
-				{
-					match line
-					{
-						Ok(o) => debug!("{}", o),
-						Err(e) => error!("{}", e),
-					}
-				}
-			},
-			None => warn!("No ChildStderr"),
+			if self.playlistCurrent > 0
+			{
+				self.currentDownloadLabel = self.playlistCurrent.to_string();
+			}
+			else
+			{
+				self.currentDownloadLabel = String::default();
+			}
 		}
 	}
 }

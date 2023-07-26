@@ -4,7 +4,7 @@
 use dioxus::prelude::*;
 use fermi::{use_atom_ref, use_read};
 use futures::StreamExt;
-use crate::download::{DownloadFormats, DownloadProgress, DownloadStopped, DownloadSubtitles, DownloadTitle, VideoDownloader};
+use crate::download::{DownloadProgress, DownloadReset, DownloadStopped, DownloadTitle, VideoDownloader};
 use crate::state::{Binary, DownloaderOptions, UrlList};
 
 #[inline_props]
@@ -14,136 +14,87 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 	let downloaderOptions = use_atom_ref(cx, DownloaderOptions);
 	let urlList = use_atom_ref(cx, UrlList);
 	
-	let displayRemove = use_state(cx, || false);
-	let downloadFormats = use_ref(cx, || vec![]);
 	let downloadProcess = use_state(cx, || None);
-	let downloadSubtitles = use_ref(cx, || vec![]);
 	let downloadStopped = use_state(cx, || false);
+	let playlistCurrent = use_state(cx, || 0 as usize);
+	let playlistMax = use_state(cx, || 0 as usize);
 	let progressBars = use_ref(cx, || Vec::<(String, DownloadProgress)>::default());
+	let shouldReset = use_ref(cx, || false);
 	let title = use_state(cx, || videoUrl.to_owned());
 	
 	let vt = title.clone();
-	let vu = videoUrl.clone();
 	let titleCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadTitle>| async move
 	{
 		while let Some(instance) = recv.next().await
 		{
-			if vt == vu && !instance.title.is_empty()
+			if !instance.title.is_empty() && !vt.eq(&instance.title)
 			{
 				vt.set(instance.title.to_owned());
 			}
 		}
 	});
 	
-	let df = downloadFormats.clone();
-	let formatsCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadFormats>| async move
-	{
-		while let Some(instance) = recv.next().await
-		{
-			if df.read().is_empty()
-			{
-				df.with_mut(|list| list.append(&mut instance.formats.to_owned()));
-			}
-		}
-	});
-	
-	let ds = downloadSubtitles.clone();
-	let dopts = downloaderOptions.clone();
-	let subtitlesCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadSubtitles>| async move
-	{
-		while let Some(instance) = recv.next().await
-		{
-			if dopts.read().writeSubs && ds.read().is_empty()
-			{
-				ds.with_mut(|list| list.append(&mut instance.languages.to_owned()));
-			}
-		}
-	});
-	
 	let dpr = progressBars.clone();
-	let df2 = downloadFormats.clone();
-	let ds2 = downloadSubtitles.clone();
+	let sr1 = shouldReset.clone();
 	let progressCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadProgress>| async move
 	{
 		while let Some(instance) = recv.next().await
 		{
-			if dpr.read().is_empty()
+			let mut list = dpr.write();
+			
+			let mut resetFlag = sr1.write();
+			if *resetFlag
 			{
-				let mut list = dpr.write();
-				ds2.read()
-					.iter()
-					.for_each(|lang| list.push((lang.to_owned(), DownloadProgress::default())));
-				
-				df2.read()
-					.iter()
-					.for_each(|format| list.push((format.to_owned(), DownloadProgress::default())));
+				list.clear();
+				*resetFlag = false;
 			}
 			
-			if !dpr.read().is_empty()
+			if let Some((_, prog)) = list.iter_mut().find(|(label, _)| label == &instance.label)
 			{
-				//If the final video is being downloaded directly, there is no format or subtitle label in the file name.
-				//But it's the only progress bar, so just update it.
-				if dpr.read().len() == 1
+				if prog.percentComplete != "100%"
 				{
-					if let Some((_, prog)) = dpr.write().first_mut()
-					{
-						prog.update(instance.to_owned());
-					}
+					prog.update(instance.to_owned());
 				}
-				else if let Some((_, prog)) = dpr.write().iter_mut().find(|(label, _)| label == &instance.label)
-				{
-					prog.update(instance.to_owned())
-				}
+			}
+			else
+			{
+				list.push((instance.label.to_owned(), instance.to_owned()));
 			}
 		}
 	});
 	
-	let dsp = progressBars.clone();
-	let df3 = downloadFormats.clone();
-	let ds3 = downloadSubtitles.clone();
-	let dst = downloadStopped.clone();
-	let stoppedCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadStopped>| async move
+	let pc = playlistCurrent.clone();
+	let pm = playlistMax.clone();
+	let sr2 = shouldReset.clone();
+	let resetCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadReset>| async move
 	{
 		while let Some(instance) = recv.next().await
 		{
-			if instance.completed
-			{
-				let mut list = dsp.write();
-				
-				if list.is_empty()
-				{
-					ds3.read()
-						.iter()
-						.for_each(|lang| list.push((lang.to_owned(), DownloadProgress::default())));
-					
-					df3.read()
-						.iter()
-						.for_each(|format| list.push((format.to_owned(), DownloadProgress::default())));
-				}
-				
-				list.iter_mut()
-					.for_each(|(_, dp)| dp.percentComplete = "100%".to_owned());
-				
-				dst.set(true);
-			}
-			else if instance.stopped
-			{
-				dst.set(true);
-			}
+			*sr2.write() = true;
+			pc.set(instance.playlistCurrent);
+			pm.set(instance.playlistMax);
+		}
+	});
+	
+	let dst = downloadStopped.clone();
+	let stoppedCoroutine = use_coroutine(cx, |mut recv: UnboundedReceiver<DownloadStopped>| async move
+	{
+		while let Some(_) = recv.next().await
+		{
+			dst.set(true);
 		}
 	});
 	
 	startDownloader(cx, ||
 	{
-		to_owned![binary, videoUrl, formatsCoroutine, subtitlesCoroutine, progressCoroutine, stoppedCoroutine, titleCoroutine];
+		to_owned![binary, videoUrl, progressCoroutine, resetCoroutine, stoppedCoroutine, titleCoroutine];
 		let dlopts = downloaderOptions.read().clone();
 		let handle = tokio::task::spawn(async move {
 			let mut vdl = VideoDownloader::new(binary.into(), dlopts.to_owned());
 			vdl.download(videoUrl.into(),
-				Box::new(move |df| formatsCoroutine.send(df)),
 				Box::new(move |dp| progressCoroutine.send(dp)),
+				Box::new(move |dr| resetCoroutine.send(dr)),
 				Box::new(move |ds| stoppedCoroutine.send(ds)),
-				Box::new(move |ds| subtitlesCoroutine.send(ds)),
 				Box::new(move |dt| titleCoroutine.send(dt))
 			).await;
 		});
@@ -151,29 +102,28 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		downloadProcess.set(Some(handle));
 	});
 	
-	let finished = progressBars.read()
+	let finished = !progressBars.read().is_empty()
+						&& progressBars.read()
 							.iter()
 							.all(|(_, prog)| prog.percentComplete == "100%");
 	
-	let btnString = match displayRemove.get()
+	let btnString = match *downloadStopped.get()
 	{
 		true => "Start",
 		false => "Halt",
 	};
 	
-	let haltResumeClass = match displayRemove.get()
+	let playlistText = match *playlistCurrent.get() > 0 && *playlistMax.get() > 0
 	{
-		true => "haltResumeButton",
-		false => "haltResumeButton centerMe",
+		true => format!("[{} of {}]: ", playlistCurrent, playlistMax),
+		false => "".to_string(),
 	};
 	
-	let removeClass = match downloadStopped.get()
+	let removeClass = match !finished
 	{
-		true => "removeButton centerMe",
-		false => "removeButton"
+		true => "removeButton",
+		false => "removeButton centerMe",
 	};
-	
-	let shouldDisplayRemove = **displayRemove || *downloadStopped.get();
 	
 	return cx.render(rsx!
 	{
@@ -181,7 +131,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 		{
 			class: "download",
 			
-			h4 { "{title}" }
+			h4 { "{playlistText}{title}" }
 			
 			for (i, (dpl, dp)) in progressBars.read().iter().enumerate()
 			{
@@ -199,7 +149,7 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 				{
 					button
 					{
-						class: "{haltResumeClass}",
+						class: "haltResumeButton",
 						
 						onclick: move |_| {
 							match downloadProcess.get()
@@ -207,23 +157,22 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 								Some(handle) => {
 									handle.abort();
 									downloadProcess.set(None);
-									displayRemove.set(true);
+									downloadStopped.set(true);
 								},
 								None => {
-									to_owned![binary, videoUrl, formatsCoroutine, subtitlesCoroutine, progressCoroutine, stoppedCoroutine, titleCoroutine];
+									to_owned![binary, videoUrl, progressCoroutine, resetCoroutine, stoppedCoroutine, titleCoroutine];
 									let dlopts2 = downloaderOptions.read().clone();
 									let handle = tokio::task::spawn(async move {
 										let mut vdl = VideoDownloader::new(binary.into(), dlopts2.to_owned());
 										vdl.download(videoUrl.into(),
-											Box::new(move |df| formatsCoroutine.send(df)),
 											Box::new(move |dp| progressCoroutine.send(dp)),
+											Box::new(move |dr| resetCoroutine.send(dr)),
 											Box::new(move |ds| stoppedCoroutine.send(ds)),
-											Box::new(move |ds| subtitlesCoroutine.send(ds)),
 											Box::new(move |dt| titleCoroutine.send(dt))
 										).await;
 									});
 									
-									displayRemove.set(false);
+									downloadStopped.set(false);
 									downloadProcess.set(Some(handle));
 								},
 							};
@@ -233,25 +182,22 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 					}
 				})
 				
-				shouldDisplayRemove.then(|| rsx!
+				button
 				{
-					button
-					{
-						class: "{removeClass}",
+					class: "{removeClass}",
+					
+					onclick: move |_| {
+						if let Some(handle) = downloadProcess.get()
+						{
+							handle.abort();
+							downloadProcess.set(None);
+						}
 						
-						onclick: move |_| {
-							if let Some(handle) = downloadProcess.get()
-							{
-								handle.abort();
-								downloadProcess.set(None);
-							}
-							
-							urlList.write().remove_entry(indexKey);
-						},
-						
-						"Remove"
-					}
-				})
+						urlList.write().remove_entry(indexKey);
+					},
+					
+					"Remove"
+				}
 			}
 		}
 	});
@@ -263,17 +209,24 @@ pub fn DownloadElement(cx: Scope, indexKey: usize, videoUrl: String) -> Element
 fn DownloadProgressBar(cx: Scope, label: String, progress: DownloadProgress) -> Element
 {
 	let percent = progress.percentComplete.as_str();
-	let percentNumber = match percent.find("%").is_some()
+	
+	let mut percentNumber = match percent.find("%").is_some()
 	{
 		true => &percent[..percent.len()-1],
 		false => "0",
 	};
 	
-	let percentDisplay = match progress.percentComplete != "0%"
+	let mut percentDisplay = match progress.percentComplete != "0%"
 	{
 		true => progress.percentComplete.to_owned(),
 		false => "0%".to_string(),
 	};
+	
+	if percent.is_empty()
+	{
+		percentNumber = "100";
+		percentDisplay = "?".to_string();
+	}
 	
 	return cx.render(rsx!
 	{
@@ -290,15 +243,15 @@ fn DownloadProgressBar(cx: Scope, label: String, progress: DownloadProgress) -> 
 				h5 { "{percentDisplay}" }
 			}
 			
-			(!progress.transferRate.is_empty() || !progress.estimatedSize.is_empty() || !progress.estimatedTime.is_empty()).then(|| rsx!
+			(!progress.transferRate.is_empty() || !progress.size.is_empty() || !progress.time.is_empty()).then(|| rsx!
 			{
 				div
 					{
 						class: "progressDetails",
 						
-						h6 { "Transfer Rate: {progress.transferRate}" }
-						h6 { "Estimated Size: {progress.estimatedSize}" }
-						h6 { "Time Remaining: {progress.estimatedTime}" }
+						h6 { "Rate: {progress.transferRate}" }
+						h6 { "Size: {progress.size}" }
+						h6 { "Time: {progress.time}" }
 					}
 			})
 		}
